@@ -1,0 +1,368 @@
+schema_version: "0.1"
+dimensions:
+  task_input_vocab: [classification, generation, seq2seq, QA, NER, RAG, agents, general_NLP, tabular_only, multimodal, NA]
+  access_vocab: [black_box, gray_box, white_box, mixed, NA]
+  arch_vocab: [encoder, decoder, encdec, transformer_general, non_llm, NA]
+  target_scope_vocab: [local, global, both, NA]
+  granularity_vocab: [token, span, sentence, document, example, concept, neuron, head, layer, circuit, component_graph, dataset, NA]
+  user_goal_vocab: [research_debug, mech_interp, model_eval, fairness_audit, end_user_explain, general_tooling, NA]
+  fidelity_vocab: [high, medium, low, mixed, NA]
+  format_vocab: [visual_UI, notebook_viz, text_rationale, rules, ranked_examples, metrics, API_only, interactive_dialogue, NA]
+
+toolkits:
+
+  # -------------------------
+  # Traditional XAI toolkits
+  # -------------------------
+
+  - name: Captum
+    task_input: [general_NLP, classification, NA]
+    access_arch:
+      access: [white_box]
+      arch: [transformer_general, NA]
+    target_scope: both
+    granularity: [token, neuron, layer]
+    user_goal_audience: [research_debug, general_tooling]
+    fidelity: medium
+    format: [notebook_viz, API_only]
+    notes: "Attribution methods: primary attribution, layer attribution, neuron attribution."  # :contentReference[oaicite:6]{index=6}
+
+  - name: InterpretML
+    task_input: [general_NLP, NA]
+    access_arch:
+      access: [black_box, white_box, mixed]
+      arch: [non_llm, NA]
+    target_scope: both
+    granularity: [dataset, NA]
+    user_goal_audience: [general_tooling, model_eval]
+    fidelity: medium
+    format: [API_only, metrics]
+    notes: "Classic post-hoc methods: SHAP, LIME, partial dependence plots, Morris sensitivity analysis."  # :contentReference[oaicite:7]{index=7}
+
+  - name: Alibi
+    task_input: [general_NLP, classification, NA]
+    access_arch:
+      access: [black_box, mixed]
+      arch: [transformer_general, NA]
+    target_scope: both
+    granularity: [token, span, example, rules, NA]
+    user_goal_audience: [general_tooling, end_user_explain]
+    fidelity: mixed
+    format: [API_only, rules, ranked_examples, NA]
+    notes: "Broader XAI: ALE, permutation importance, pertinent positives, counterfactuals; text methods include Anchors, IG, similarity explanations."  # :contentReference[oaicite:8]{index=8} :contentReference[oaicite:9]{index=9}
+
+  - name: Dalex
+    task_input: [tabular_only]
+    access_arch:
+      access: [black_box, mixed]
+      arch: [non_llm]
+    target_scope: both
+    granularity: [dataset]
+    user_goal_audience: [model_eval, fairness_audit]
+    fidelity: medium
+    format: [API_only, metrics]
+    notes: "Explainability + fairness; supports tabular data only."  # :contentReference[oaicite:10]{index=10}
+
+  - name: FAT Forensics
+    task_input: [tabular_only]
+    access_arch:
+      access: [black_box, mixed]
+      arch: [non_llm]
+    target_scope: both
+    granularity: [dataset]
+    user_goal_audience: [fairness_audit, model_eval]
+    fidelity: medium
+    format: [API_only, metrics]
+    notes: "Fairness/accountability/transparency toolbox; focusing on tabular data."  # :contentReference[oaicite:11]{index=11}
+
+  - name: Amazon SageMaker Clarify
+    task_input: [general_NLP, tabular_only, NA]
+    access_arch:
+      access: [mixed]
+      arch: [non_llm, transformer_general, NA]
+    target_scope: both
+    granularity: [dataset, NA]
+    user_goal_audience: [fairness_audit, model_eval]
+    fidelity: medium
+    format: [API_only, metrics]
+    notes: "AWS tool for fairness + explainability; includes SHAP and PDP."  # :contentReference[oaicite:12]{index=12}
+
+  # -------------------------------------
+  # Democratization + leaderboards
+  # -------------------------------------
+
+  - name: PnPXAI
+    task_input: [multimodal, general_NLP]
+    access_arch:
+      access: [mixed, NA]
+      arch: [transformer_general, non_llm, NA]
+    target_scope: both
+    granularity: [dataset, NA]
+    user_goal_audience: [general_tooling, end_user_explain]
+    fidelity: mixed
+    format: [API_only, NA]
+    notes: "Auto-detects architecture, recommends explainers for data type, can optimize explainer hyperparameters."  # :contentReference[oaicite:13]{index=13}
+
+  - name: EXPLAINABOARD
+    task_input: [general_NLP]
+    access_arch:
+      access: [NA]
+      arch: [NA]
+    target_scope: global
+    granularity: [dataset]
+    user_goal_audience: [model_eval]
+    fidelity: NA
+    format: [visual_UI, metrics]
+    notes: "Leaderboard emphasizing interpretability, interactivity, reliability of evaluation (as described)."  # :contentReference[oaicite:14]{index=14}
+
+  # -------------------------------------
+  # Task-specific: text classification
+  # -------------------------------------
+
+  - name: Alibi (text explainers)
+    task_input: [classification]
+    access_arch:
+      access: [mixed]  # Anchors can be black-box; IG needs white-box
+      arch: [transformer_general, NA]
+    target_scope: local
+    granularity: [token, span, rules, example]
+    user_goal_audience: [general_tooling, end_user_explain]
+    fidelity: mixed
+    format: [rules, ranked_examples, API_only]
+    notes: "Text explainers: Anchors (rule-based), Integrated Gradients, similarity explanations (nearest training examples)."  # :contentReference[oaicite:15]{index=15}
+
+  - name: ferret
+    task_input: [classification]
+    access_arch:
+      access: [mixed]
+      arch: [transformer_general]
+    target_scope: local
+    granularity: [token, span]
+    user_goal_audience: [research_debug, model_eval]
+    fidelity: mixed
+    format: [API_only, metrics, notebook_viz]
+    notes: "Transformers text classification explainers (gradients, IG, SHAP, LIME) + faithfulness/plausibility metrics + benchmark datasets."  # :contentReference[oaicite:16]{index=16}
+
+  - name: transformers-interpret
+    task_input: [classification, QA, NER]
+    access_arch:
+      access: [white_box, mixed]
+      arch: [transformer_general]
+    target_scope: local
+    granularity: [token]
+    user_goal_audience: [general_tooling, research_debug]
+    fidelity: medium
+    format: [API_only]
+    notes: "Convenient attribution scores for HF Transformers; tasks include classification, QA, NER (as described)."  # :contentReference[oaicite:17]{index=17}
+
+  # -------------------------------------
+  # Task-specific: text generation / seq2seq
+  # -------------------------------------
+
+  - name: Captum v0.7
+    task_input: [generation, seq2seq]
+    access_arch:
+      access: [mixed]
+      arch: [decoder, encdec, transformer_general]
+    target_scope: local
+    granularity: [token]
+    user_goal_audience: [research_debug, general_tooling]
+    fidelity: mixed
+    format: [notebook_viz, API_only]
+    notes: "Extends attribution to text generation; prompt token → generated token impact via perturbation- and gradient-based approaches; includes visualization utilities."  # :contentReference[oaicite:18]{index=18}
+
+  - name: Inseq
+    task_input: [generation, seq2seq]
+    access_arch:
+      access: [mixed]
+      arch: [decoder, encdec]
+    target_scope: local
+    granularity: [token]
+    user_goal_audience: [research_debug, general_tooling]
+    fidelity: mixed
+    format: [API_only, notebook_viz]
+    notes: "Builds on Captum for attribution in generation; target sequence or generated sequence; includes discretized IG and attention-based attribution."  # :contentReference[oaicite:19]{index=19}
+
+  - name: Interpret-Text
+    task_input: [classification, generation]
+    access_arch:
+      access: [mixed]
+      arch: [encoder, NA]  # BERT-specific explainers are emphasized
+    target_scope: both
+    granularity: [token, span, layer, dataset]
+    user_goal_audience: [research_debug, general_tooling]
+    fidelity: mixed
+    format: [API_only]
+    notes: "Built on InterpretML; includes BERT intermediate-layer information-based explainer, selective rationalization, and perturbation-based explainers."  # :contentReference[oaicite:20]{index=20} :contentReference[oaicite:21]{index=21}
+
+  - name: INTERPRETO
+    task_input: [classification, generation]
+    access_arch:
+      access: [mixed]
+      arch: [transformer_general, NA]
+    target_scope: both
+    granularity: [token, concept, dataset, NA]
+    user_goal_audience: [research_debug, general_tooling]
+    fidelity: mixed
+    format: [API_only]
+    notes: "Unified API; perturbation- and gradient-based attributions + concept-based explanations."  # :contentReference[oaicite:22]{index=22}
+
+  # -------------------------------------
+  # General-purpose NLP interpretability UIs
+  # -------------------------------------
+
+  - name: AllenNLP Interpret
+    task_input: [classification, QA, NER, general_NLP]
+    access_arch:
+      access: [white_box, mixed]
+      arch: [transformer_general, NA]
+    target_scope: local
+    granularity: [token, span, example]
+    user_goal_audience: [research_debug]
+    fidelity: medium
+    format: [API_only, notebook_viz]
+    notes: "Gradients + adversarial attacks to generate counterfactuals/exemplars; supports multiple NLP tasks."  # :contentReference[oaicite:23]{index=23}
+
+  - name: LIT (Language Interpretability Tool)
+    task_input: [general_NLP, classification, generation]
+    access_arch:
+      access: [mixed]
+      arch: [transformer_general, NA]
+    target_scope: both
+    granularity: [token, dataset, example]
+    user_goal_audience: [research_debug, model_eval]
+    fidelity: mixed
+    format: [visual_UI]
+    notes: "Browser-based; salience maps, embedding visualizations, counterfactual generation, interactive exploration; supports custom models/datasets; not LLM-specific."  # :contentReference[oaicite:24]{index=24}
+
+  - name: ECCO
+    task_input: [general_NLP, generation, seq2seq]
+    access_arch:
+      access: [white_box, mixed]
+      arch: [decoder, encdec]
+    target_scope: both
+    granularity: [token, neuron, layer, dataset, concept, NA]
+    user_goal_audience: [research_debug, mech_interp]
+    fidelity: medium
+    format: [visual_UI, notebook_viz]
+    notes: "Input attribution (Grad×Input), hidden-state evolution (CCA, logit lens), neuron inspection (NMF, probing classifiers)."  # :contentReference[oaicite:25]{index=25} :contentReference[oaicite:26]{index=26}
+
+  - name: LLMCheckup
+    task_input: [general_NLP, QA, NA]
+    access_arch:
+      access: [mixed]
+      arch: [decoder, transformer_general, NA]
+    target_scope: both
+    granularity: [token, example, dataset, NA]
+    user_goal_audience: [end_user_explain, research_debug]
+    fidelity: mixed
+    format: [interactive_dialogue]
+    notes: "Conversational examination; integrates internal-access methods (feature attribution, semantic similarity) plus prompting-based rationalization/counterfactuals without internals."  # :contentReference[oaicite:27]{index=27}
+
+  # -------------------------------------
+  # Mechanistic interpretability: activations/features
+  # -------------------------------------
+
+  - name: TransformerLens
+    task_input: [general_NLP, NA]
+    access_arch:
+      access: [white_box]
+      arch: [transformer_general]
+    target_scope: both
+    granularity: [head, neuron, layer, circuit, component_graph]
+    user_goal_audience: [mech_interp, research_debug]
+    fidelity: high
+    format: [API_only, notebook_viz]
+    notes: "Hooks on modules; capture activations/gradients; activation+path patching; logit/attention lenses; IOI-style analyses."  # :contentReference[oaicite:28]{index=28} :contentReference[oaicite:29]{index=29}
+
+  - name: MechaMap
+    task_input: [general_NLP]
+    access_arch:
+      access: [white_box]
+      arch: [transformer_general]
+    target_scope: global
+    granularity: [neuron, layer]
+    user_goal_audience: [mech_interp, research_debug]
+    fidelity: medium
+    format: [API_only]
+    notes: "Identifies neurons/groups that activate for a semantic feature; used to locate domain-specific signals."  # :contentReference[oaicite:30]{index=30}
+
+  - name: sae-lens
+    task_input: [general_NLP]
+    access_arch:
+      access: [white_box]
+      arch: [transformer_general]
+    target_scope: both
+    granularity: [concept, neuron, layer]
+    user_goal_audience: [mech_interp, research_debug]
+    fidelity: high
+    format: [API_only, notebook_viz]
+    notes: "Sparse autoencoders on activations; inspect features and do causal evaluation via ablation/patching."  # :contentReference[oaicite:31]{index=31} :contentReference[oaicite:32]{index=32}
+
+  # -------------------------------------
+  # Attention visualization toolkits
+  # -------------------------------------
+
+  - name: BertViz
+    task_input: [general_NLP]
+    access_arch:
+      access: [white_box, gray_box]
+      arch: [encoder, encdec, decoder]
+    target_scope: local
+    granularity: [head, token, layer]
+    user_goal_audience: [research_debug]
+    fidelity: low
+    format: [visual_UI]
+    notes: "Attention visualization; model view + neuron view; attention-only explanations can be misleading."  # :contentReference[oaicite:33]{index=33}
+
+  - name: exBERT
+    task_input: [general_NLP]
+    access_arch:
+      access: [white_box, gray_box]
+      arch: [encoder, NA]
+    target_scope: local
+    granularity: [head, token, layer]
+    user_goal_audience: [research_debug]
+    fidelity: low
+    format: [visual_UI]
+    notes: "Interprets attention patterns while also considering attended-to embeddings; works on user-defined model and corpus."  # :contentReference[oaicite:34]{index=34}
+
+  # -------------------------------------
+  # Computational graph / information flow UIs
+  # -------------------------------------
+
+  - name: LM-Debugger
+    task_input: [general_NLP, NA]
+    access_arch:
+      access: [white_box]
+      arch: [transformer_general]
+    target_scope: local
+    granularity: [layer, neuron, component_graph]
+    user_goal_audience: [mech_interp, research_debug]
+    fidelity: high
+    format: [visual_UI, NA]
+    notes: "Layer-wise interpretation with FFN sub-updates projected to vocab; targeted interventions; index of FFN vectors."  # :contentReference[oaicite:35]{index=35} :contentReference[oaicite:36]{index=36}
+
+  - name: LM Transparency Tool (LM-TT)
+    task_input: [general_NLP]
+    access_arch:
+      access: [white_box]
+      arch: [transformer_general]
+    target_scope: both
+    granularity: [head, neuron, layer, component_graph]
+    user_goal_audience: [mech_interp, research_debug]
+    fidelity: high
+    format: [visual_UI]
+    notes: "Highlights important input→output information flow; component attribution from heads to neurons; uses logit lens/update projection; includes attention visualizations."  # :contentReference[oaicite:37]{index=37}
+
+  - name: VISIT
+    task_input: [general_NLP]
+    access_arch:
+      access: [white_box]
+      arch: [transformer_general]
+    target_scope: local
+    granularity: [neuron, layer, component_graph]
+    user_goal_audience: [mech_interp, research_debug]
+    fidelity: high
+    format: [visual_UI]
+    notes: "Interactive flow graph of forward pass; logit lens projections for hidden states and neuron activations."  # :contentReference[oaicite:38]{index=38}
