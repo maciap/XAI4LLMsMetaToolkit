@@ -22,5 +22,5 @@ streamlit run app.py
 
 ### TODO 
 
-* Update and adjust current entries methods.yaml (containing all the methods that can be recommended)
+* Update and adjust current entries methods.json (containing all the methods that can be recommended)
 * Add more runnable tools 
