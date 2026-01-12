@@ -1,1 +1,5 @@
 streamlit>=1.30
+captum==0.8.0
+bertviz
+transformers
+torch

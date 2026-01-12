@@ -10,12 +10,21 @@ import matplotlib.pyplot as plt
 from text_to_score import rank_methods
 
 from toolkits.captum_classifier import CaptumClassifierAttribution
+from toolkits.bertviz_attention import BertVizAttention
+import streamlit.components.v1 as components
 
+
+#@st.cache_resource
+#def get_plugins():
+#    plugin = CaptumClassifierAttribution()
+#    return {plugin.id: plugin}
 
 @st.cache_resource
 def get_plugins():
-    plugin = CaptumClassifierAttribution()
-    return {plugin.id: plugin}
+    plugin1 = CaptumClassifierAttribution()
+    plugin2 = BertVizAttention()
+    return {plugin1.id: plugin1, plugin2.id: plugin2}
+
 
 
 PLUGINS = get_plugins()
@@ -143,7 +152,13 @@ def render_plugin_form(plugin):
         elif f.type == "select":
             vals[f.key] = st.selectbox(f.label, f.options or [], help=getattr(f, "help", ""))
         elif f.type == "number":
-            default = 50 if f.key == "n_steps" else 0
+            if f.key == "n_steps":
+                default = 50
+            elif f.key == "max_length":
+                default = 128
+            else:
+                default = 0
+
             vals[f.key] = st.number_input(
                 f.label,
                 value=float(default),
@@ -411,6 +426,23 @@ with col1:
         plt.ylabel("Attribution (normalized)")
         plt.tight_layout()
         st.pyplot(fig)
+
+        # ---- BertViz output ----
+    elif outputs and outputs.get("plugin") == "bertviz_attention" and outputs.get("html"):
+        st.subheader("Result")
+
+        with st.expander("ℹ️ What you are seeing", expanded=True):
+            st.write(
+                "- Interactive attention visualization from BertViz.\n"
+                "- Shows attention patterns by layer/head.\n"
+                "- Attention ≠ importance, but it's useful for inspection/debugging."
+            )
+
+        st.write(f"**Model:** {outputs.get('model', 'NA')}")
+        st.write(f"**View:** {outputs.get('view', 'NA')}")
+
+        components.html(outputs["html"], height=850, scrolling=True)
+
 
 with col2:
     if mode == "Structured (categories)":

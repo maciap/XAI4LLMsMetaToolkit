@@ -304,6 +304,7 @@ toolkits:
   # -------------------------------------
 
   - name: BertViz
+    plugin_id: bertviz_attention
     task_input: [general_NLP]
     access_arch:
       access: [white_box, gray_box]

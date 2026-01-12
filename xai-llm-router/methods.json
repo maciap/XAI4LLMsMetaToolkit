@@ -703,6 +703,7 @@
     },
     {
       "name": "BertViz",
+      "plugin_id": "bertviz_attention",
       "task_input": [
         "general_NLP"
       ],

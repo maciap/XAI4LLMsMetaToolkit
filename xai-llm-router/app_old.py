@@ -1,18 +1,24 @@
+# app.py
 import json
 from typing import Any, Dict, List, Tuple
 
 import streamlit as st
 
-from text_to_score import rank_methods  # NEW
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from text_to_score import rank_methods
+
+from toolkits.captum_classifier import CaptumClassifierAttribution
 
 
+@st.cache_resource
+def get_plugins():
+    plugin = CaptumClassifierAttribution()
+    return {plugin.id: plugin}
 
-from toolkits.captum_ig import CaptumIGSentiment
 
-PLUGINS = {
-    CaptumIGSentiment.id: CaptumIGSentiment(),
-}
-
+PLUGINS = get_plugins()
 
 
 # -------------------------
@@ -97,25 +103,58 @@ def score(user: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str]]:
     reasons = []
 
     if user["task"] != "NA" and user["task"] in norm_list(m.get("task_input", [])):
-        s += 2; reasons.append("task match")
+        s += 2
+        reasons.append("task match")
 
     if user["granularity"] != "NA" and user["granularity"] in norm_list(m.get("granularity", [])):
-        s += 2; reasons.append("granularity match")
+        s += 2
+        reasons.append("granularity match")
 
     if user["goal"] != "NA" and user["goal"] in norm_list(m.get("user_goal_audience", [])):
-        s += 2; reasons.append("goal match")
+        s += 2
+        reasons.append("goal match")
 
     if user["format"] != "NA" and user["format"] in norm_list(m.get("format", [])):
-        s += 2; reasons.append("format match")
+        s += 2
+        reasons.append("format match")
 
     if user["fidelity"] != "NA":
         f = m.get("fidelity", "NA")
         if f == user["fidelity"]:
-            s += 2; reasons.append("fidelity match")
+            s += 2
+            reasons.append("fidelity match")
         elif f == "mixed":
-            s += 1; reasons.append("fidelity partially supported")
+            s += 1
+            reasons.append("fidelity partially supported")
 
     return s, reasons
+
+
+# -------------------------
+# Runner UI helper
+# -------------------------
+def render_plugin_form(plugin):
+    vals = {}
+    for f in plugin.spec():
+        if f.type == "textarea":
+            vals[f.key] = st.text_area(f.label, help=getattr(f, "help", ""))
+        elif f.type == "text":
+            vals[f.key] = st.text_input(f.label, help=getattr(f, "help", ""))
+        elif f.type == "select":
+            vals[f.key] = st.selectbox(f.label, f.options or [], help=getattr(f, "help", ""))
+        elif f.type == "number":
+            default = 50 if f.key == "n_steps" else 0
+            vals[f.key] = st.number_input(
+                f.label,
+                value=float(default),
+                step=1.0,
+                help=getattr(f, "help", ""),
+            )
+        elif f.type == "checkbox":
+            vals[f.key] = st.checkbox(f.label, help=getattr(f, "help", ""))
+        else:
+            st.warning(f"Unknown field type: {f.type} (field {f.key})")
+    return vals
 
 
 # -------------------------
@@ -143,7 +182,6 @@ with st.sidebar:
 
     top_k = st.slider("Max recommendations", 5, 50, 20)
 
-    # Prepare placeholders
     user: Dict[str, str] = {}
     user_text = ""
     excluded: List[Dict[str, Any]] = []
@@ -173,7 +211,6 @@ with st.sidebar:
 
         add_hard = st.checkbox("Add hard constraints too", value=False)
 
-        # Default hard constraints to NA (so feasible() won't filter)
         user = {k: "NA" for k in DIM_VALUES.keys()}
 
         if add_hard:
@@ -190,7 +227,6 @@ with st.sidebar:
         temperature = st.slider("Text model temperature", 0.2, 1.5, 0.7, 0.05)
         show_text_prefs = st.checkbox("Show predicted preferences", value=True)
 
-        # Excluded list doesn’t matter in text mode, but we can show it if add_hard is enabled
         show_excluded = st.checkbox("Show excluded methods", value=False)
 
 
@@ -208,20 +244,23 @@ if mode == "Structured (categories)":
             continue
 
         sc, reasons = score(user, m)
-        recommended.append({
-            "name": m.get("name", "NA"),
-            "score": float(sc),
-            "reasons": reasons,
-            "notes": m.get("notes", ""),
-            "meta": {
-                "scope": m.get("target_scope", "NA"),
-                "access": m.get("access_arch", {}).get("access", "NA"),
-                "arch": m.get("access_arch", {}).get("arch", "NA"),
-                "granularity": m.get("granularity", "NA"),
-                "format": m.get("format", "NA"),
-                "fidelity": m.get("fidelity", "NA"),
-            },
-        })
+        recommended.append(
+            {
+                "name": m.get("name", "NA"),
+                "plugin_id": m.get("plugin_id"),
+                "score": float(sc),
+                "reasons": reasons,
+                "notes": m.get("notes", ""),
+                "meta": {
+                    "scope": m.get("target_scope", "NA"),
+                    "access": m.get("access_arch", {}).get("access", "NA"),
+                    "arch": m.get("access_arch", {}).get("arch", "NA"),
+                    "granularity": m.get("granularity", "NA"),
+                    "format": m.get("format", "NA"),
+                    "fidelity": m.get("fidelity", "NA"),
+                },
+            }
+        )
 
     recommended.sort(key=lambda x: x["score"], reverse=True)
     text_probs = {}
@@ -232,8 +271,6 @@ else:
         recommended = []
         text_probs = {}
     else:
-        # Apply feasible() only if the user enabled hard constraints.
-        # Note: even if add_hard is off, user dict is all "NA" so it won't filter anyway.
         filtered_methods = []
         for m in methods:
             ok, why = feasible(user, m)
@@ -254,20 +291,23 @@ else:
 
         for item in ranked:
             m = item["method"]
-            recommended.append({
-                "name": item["name"],
-                "score": float(item["final_score"]),
-                "reasons": ["text-match"] + (item.get("soft_reasons") or []),
-                "notes": m.get("notes", ""),
-                "meta": {
-                    "scope": m.get("target_scope", "NA"),
-                    "access": m.get("access_arch", {}).get("access", "NA"),
-                    "arch": m.get("access_arch", {}).get("arch", "NA"),
-                    "granularity": m.get("granularity", "NA"),
-                    "format": m.get("format", "NA"),
-                    "fidelity": m.get("fidelity", "NA"),
-                },
-            })
+            recommended.append(
+                {
+                    "name": item["name"],
+                    "plugin_id": m.get("plugin_id"),
+                    "score": float(item["final_score"]),
+                    "reasons": ["text-match"] + (item.get("soft_reasons") or []),
+                    "notes": m.get("notes", ""),
+                    "meta": {
+                        "scope": m.get("target_scope", "NA"),
+                        "access": m.get("access_arch", {}).get("access", "NA"),
+                        "arch": m.get("access_arch", {}).get("arch", "NA"),
+                        "granularity": m.get("granularity", "NA"),
+                        "format": m.get("format", "NA"),
+                        "fidelity": m.get("fidelity", "NA"),
+                    },
+                }
+            )
 
 
 # -------------------------
@@ -277,6 +317,7 @@ col1, col2 = st.columns([2, 1], gap="large")
 
 with col1:
     st.subheader(f"Recommended ({min(top_k, len(recommended))} shown / {len(recommended)} total)")
+
     for item in recommended[:top_k]:
         with st.container(border=True):
             st.markdown(f"### {item['name']}")
@@ -285,8 +326,91 @@ with col1:
                 f"**Why:** {', '.join(item['reasons']) if item['reasons'] else 'generic fit'}"
             )
             st.json(item["meta"], expanded=False)
+
+            cbtn, cinfo = st.columns([1, 3])
+            with cbtn:
+                if st.button("Select", key=f"select_{item['name']}"):
+                    st.session_state["selected_method"] = item["name"]
+                    st.session_state["selected_plugin_id"] = item.get("plugin_id")
+                    st.session_state.pop("last_outputs", None)
+
+            with cinfo:
+                if not item.get("plugin_id"):
+                    st.caption("Not runnable yet (no plugin attached).")
+
             if item["notes"]:
                 st.caption(item["notes"])
+
+    st.divider()
+    st.subheader("Run selected method")
+
+    selected_plugin_id = st.session_state.get("selected_plugin_id")
+    if not selected_plugin_id:
+        st.info("Select a method above to run it.")
+    else:
+        plugin = PLUGINS.get(selected_plugin_id)
+        if plugin is None:
+            st.error(f"No runnable plugin registered for: {selected_plugin_id}")
+        else:
+            st.markdown(f"**Selected:** {plugin.name}")
+            inputs = render_plugin_form(plugin)
+
+            if st.button("Run explanation", key="run_expl"):
+                try:
+                    outputs = plugin.run(inputs)
+                    st.session_state["last_outputs"] = outputs
+                except Exception as e:
+                    st.error(f"Run failed: {e}")
+
+    outputs = st.session_state.get("last_outputs")
+    if outputs and outputs.get("attributions"):
+        st.subheader("Result")
+
+        # --- User-facing helper text ---
+        with st.expander("ℹ️ How to read this explanation", expanded=True):
+            st.write(
+                "- **Model**: a text classification model that assigns one label to your sentence.\n"
+                "- **Prediction**: the label the model believes is most likely.\n"
+                "- **Label being explained**: the label whose score we attribute back to the input words.\n"
+                "- **Word importance**: tokens with larger absolute scores influence the label more.\n\n"
+                "A **positive** attribution pushes the model *toward* the explained label; "
+                "a **negative** attribution pushes it *away*."
+            )
+
+        # Summary
+        pred = outputs.get("predicted", {})
+        tgt = outputs.get("target", {})
+        params = outputs.get("params", {})
+
+        st.write(f"**Model:** {outputs.get('model', 'NA')}")
+        st.write(f"**Algorithm:** {outputs.get('algorithm', 'NA')}")
+        st.write(f"**Prediction:** {pred.get('label', pred.get('idx', 'NA'))}")
+        st.write(f"**Label being explained:** {tgt.get('label', tgt.get('idx', 'NA'))}")
+
+        # Only meaningful for IG
+        if outputs.get("algorithm") == "IntegratedGradients":
+            st.caption(f"Integrated Gradients steps: {params.get('n_steps', 'NA')}")
+
+        # Label mapping (if available)
+        label_map = outputs.get("label_map")
+        if label_map:
+            st.markdown("**Label meanings (index → name)**")
+            st.json(label_map, expanded=False)
+
+        st.caption("Each bar shows how strongly a token contributes to the explained label (normalized).")
+
+        # Table + plot
+        df = pd.DataFrame(outputs["attributions"])
+        df_plot = df[~df["token"].isin(["[CLS]", "[SEP]", "[PAD]"])].copy()
+
+        st.dataframe(df_plot[["token", "attr_raw", "attr_norm"]], use_container_width=True)
+
+        fig = plt.figure()
+        plt.bar(range(len(df_plot)), df_plot["attr_norm"].tolist())
+        plt.xticks(range(len(df_plot)), df_plot["token"].tolist(), rotation=45, ha="right")
+        plt.ylabel("Attribution (normalized)")
+        plt.tight_layout()
+        st.pyplot(fig)
 
 with col2:
     if mode == "Structured (categories)":
@@ -311,7 +435,7 @@ with col2:
         st.subheader("Hard constraints")
         st.json(user, expanded=True)
 
-        if text_probs and show_text_prefs:
+        if "text_probs" in locals() and text_probs and show_text_prefs:
             st.subheader("Predicted preferences (top-3)")
             for dim, dist in text_probs.items():
                 top = sorted(dist.items(), key=lambda x: x[1], reverse=True)[:3]
