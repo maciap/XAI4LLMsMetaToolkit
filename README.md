@@ -10,8 +10,10 @@
 
 * Activate environment: 
 
-```powershell
-.venv\Scripts\Activate.ps1
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 * Run:
