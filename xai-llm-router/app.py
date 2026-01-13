@@ -13,6 +13,8 @@ from toolkits.captum_classifier import CaptumClassifierAttribution
 from toolkits.bertviz_attention import BertVizAttention
 import streamlit.components.v1 as components
 
+from toolkits.logit_lens import LogitLens
+
 
 #@st.cache_resource
 #def get_plugins():
@@ -23,7 +25,16 @@ import streamlit.components.v1 as components
 def get_plugins():
     plugin1 = CaptumClassifierAttribution()
     plugin2 = BertVizAttention()
-    return {plugin1.id: plugin1, plugin2.id: plugin2}
+    plugin3 = LogitLens()
+    return {plugin1.id: plugin1, plugin2.id: plugin2, plugin3.id: plugin3}
+
+
+
+#@st.cache_resource
+#def get_plugins():
+#    plugin1 = CaptumClassifierAttribution()
+#    plugin2 = BertVizAttention()
+#    return {plugin1.id: plugin1, plugin2.id: plugin2}
 
 
 
@@ -156,6 +167,10 @@ def render_plugin_form(plugin):
                 default = 50
             elif f.key == "max_length":
                 default = 128
+            elif f.key == "top_k":
+                default = 10
+            elif f.key == "position_index":
+                default = -1  # -1 means "last token" in our plugin
             else:
                 default = 0
 
@@ -442,6 +457,74 @@ with col1:
         st.write(f"**View:** {outputs.get('view', 'NA')}")
 
         components.html(outputs["html"], height=850, scrolling=True)
+
+    # ---- Logit Lens output ----
+    elif outputs and outputs.get("plugin") == "logit_lens" and outputs.get("layers"):
+        st.subheader("Result")
+
+        with st.expander("ℹ️ How to read Logit Lens", expanded=True):
+            st.write(
+                "- **Logit lens** projects the hidden state at each layer into the vocabulary space.\n"
+                "- For a chosen **token position**, it shows which tokens each layer 'leans toward' predicting.\n"
+                "- It is a **diagnostic / mechanistic** view: useful for debugging and understanding representation evolution.\n"
+                "- We use **auto-faithful normalization**: if the model has a final LayerNorm, we apply it to intermediate layers "
+                 "**but not to the final layer**."
+            )
+
+        st.write(f"**Model:** {outputs.get('model', 'NA')}")
+        st.write(f"**Text length (tokens):** {len(outputs.get('tokens', []))}")
+        st.write(f"**Position inspected:** {outputs.get('position', 'NA')} (0-based index)")
+        st.write(f"**Normalization mode:** {outputs.get('normalization_mode', 'NA')}")
+        st.write(f"**Final norm detected:** {outputs.get('final_norm_detected', False)}")
+
+        # Show token list with indices (readable)
+        toks = outputs.get("tokens", [])
+        if toks:
+            preview = " ".join([f"{i}:{t}" for i, t in enumerate(toks)])
+            st.caption("Tokenization (index:token)")
+            st.code(preview)
+
+        # Controls
+        layers = outputs["layers"]
+        n_layers = len(layers)
+        top_k = int(outputs.get("top_k", 10))
+
+        # Layer selector (slider)
+        layer_idx = st.slider("Layer", 0, n_layers - 1, n_layers - 1)
+        layer_obj = layers[layer_idx]
+
+        st.markdown(f"### Top-{top_k} tokens at layer {layer_idx}")
+        df = pd.DataFrame(layer_obj["top"])
+        # columns: token, score
+        st.dataframe(df, use_container_width=True)
+
+        # Bar plot for selected layer
+        fig = plt.figure()
+        plt.bar(range(len(df)), df["score"].tolist())
+        plt.xticks(range(len(df)), df["token"].tolist(), rotation=45, ha="right")
+        plt.ylabel(f"Score ({outputs.get('score_type','prob')})")
+        plt.title(f"Layer {layer_idx}: Top-{top_k} tokens")
+        plt.tight_layout()
+        st.pyplot(fig)
+
+        # Track final-layer top token across layers (nice high-signal viz)
+        tracked = outputs.get("tracked_token")
+        tracked_probs = outputs.get("tracked_probs")
+
+        if tracked and tracked_probs:
+            st.markdown("### Consistency across layers (tracked token)")
+            st.write(
+                f"Tracked token = **{tracked.get('token','NA')}** "
+                f"(from final layer top-1)."
+            )
+            fig2 = plt.figure()
+            plt.plot(list(range(len(tracked_probs))), tracked_probs)
+            plt.xlabel("Layer")
+            plt.ylabel("Probability")
+            plt.title("Probability of the final-layer top token across layers")
+            plt.tight_layout()
+            st.pyplot(fig2)
+
 
 
 with col2:

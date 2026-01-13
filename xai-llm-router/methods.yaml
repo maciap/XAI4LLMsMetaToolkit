@@ -367,3 +367,18 @@ toolkits:
     fidelity: high
     format: [visual_UI]
     notes: "Interactive flow graph of forward pass; logit lens projections for hidden states and neuron activations."  # :contentReference[oaicite:38]{index=38}
+
+
+  - name: Logit Lens (HF-native)
+    plugin_id: logit_lens
+    task_input: [generation, seq2seq, general_NLP, NA]
+    access_arch:
+      access: [white_box]
+      arch: [decoder, encdec, transformer_general, NA]
+    target_scope: local
+    granularity: [layer, token]
+    user_goal_audience: [mech_interp, research_debug, general_tooling]
+    fidelity: medium
+    format: [visual_UI, API_only]
+    notes: "Layer-wise vocab projection (logit lens) implemented directly with Hugging Face models: hidden states → (optional final norm) → lm_head → top-k tokens."
+
