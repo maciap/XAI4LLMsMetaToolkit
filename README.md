@@ -20,7 +20,13 @@
 streamlit run app.py
 ```
 
-### TODO 
+#### Currently supported plugins 
+* Captum (attribution)
+* Logit lens (mechanistic interpretability)
+* BertViz (visualization of attention patterns)
+
+
+#### TODO 
 
 * Update and adjust current entries methods.json (containing all the methods that can be recommended)
 * Add more runnable tools 
