@@ -11,35 +11,29 @@ from text_to_score import rank_methods
 
 from toolkits.captum_classifier import CaptumClassifierAttribution
 from toolkits.bertviz_attention import BertVizAttention
-import streamlit.components.v1 as components
-
 from toolkits.logit_lens import LogitLens
 
+# NEW: Anchors plugin
+from toolkits.alibi_anchors_text import AlibiAnchorsText
 
-#@st.cache_resource
-#def get_plugins():
-#    plugin = CaptumClassifierAttribution()
-#    return {plugin.id: plugin}
+import streamlit.components.v1 as components
+
 
 @st.cache_resource
 def get_plugins():
     plugin1 = CaptumClassifierAttribution()
     plugin2 = BertVizAttention()
     plugin3 = LogitLens()
-    return {plugin1.id: plugin1, plugin2.id: plugin2, plugin3.id: plugin3}
-
-
-
-#@st.cache_resource
-#def get_plugins():
-#    plugin1 = CaptumClassifierAttribution()
-#    plugin2 = BertVizAttention()
-#    return {plugin1.id: plugin1, plugin2.id: plugin2}
-
+    plugin4 = AlibiAnchorsText()  # NEW
+    return {
+        plugin1.id: plugin1,
+        plugin2.id: plugin2,
+        plugin3.id: plugin3,
+        plugin4.id: plugin4,  # NEW
+    }
 
 
 PLUGINS = get_plugins()
-
 
 # -------------------------
 # Config: dimension values
@@ -150,11 +144,23 @@ def score(user: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str]]:
     return s, reasons
 
 
-# -------------------------
-# Runner UI helper
-# -------------------------
+
 def render_plugin_form(plugin):
     vals = {}
+
+    ANCHOR_DEFAULTS = {
+        "threshold": 0.90,
+        "coverage_samples": 2000,
+        "batch_size": 128,
+        "beam_size": 1,
+        "min_samples_start": 50,
+        "n_covered_ex": 5,
+        "max_anchor_size": 3,
+        "delta": 0.1,
+        "tau": 0.15,
+        "max_length": 256,
+    }
+
     for f in plugin.spec():
         if f.type == "textarea":
             vals[f.key] = st.text_area(f.label, help=getattr(f, "help", ""))
@@ -163,28 +169,42 @@ def render_plugin_form(plugin):
         elif f.type == "select":
             vals[f.key] = st.selectbox(f.label, f.options or [], help=getattr(f, "help", ""))
         elif f.type == "number":
+            # Base defaults you already had
             if f.key == "n_steps":
                 default = 50
             elif f.key == "max_length":
+                # Keep your old default *unless* Anchors overrides it below
                 default = 128
             elif f.key == "top_k":
                 default = 10
             elif f.key == "position_index":
-                default = -1  # -1 means "last token" in our plugin
+                default = -1  # -1 means "last token"
             else:
                 default = 0
+
+            # Anchors-specific overrides (only affect those keys)
+            if f.key in ANCHOR_DEFAULTS:
+                default = ANCHOR_DEFAULTS[f.key]
+
+            # Choose a reasonable step: ints vs floats
+            step = 1.0
+            if f.key in ("threshold", "delta", "tau"):
+                step = 0.05
 
             vals[f.key] = st.number_input(
                 f.label,
                 value=float(default),
-                step=1.0,
+                step=float(step),
                 help=getattr(f, "help", ""),
             )
+
         elif f.type == "checkbox":
             vals[f.key] = st.checkbox(f.label, help=getattr(f, "help", ""))
         else:
             st.warning(f"Unknown field type: {f.type} (field {f.key})")
+
     return vals
+
 
 
 # -------------------------
@@ -458,6 +478,76 @@ with col1:
 
         components.html(outputs["html"], height=850, scrolling=True)
 
+    
+
+    # ---- Alibi Anchors output ----
+    elif outputs and outputs.get("plugin") == "alibi_anchors_text":
+        st.subheader("Result")
+
+        with st.expander("ℹ️ How to read Anchors", expanded=True):
+            st.write(
+                "- **Anchors** are IF-THEN style rules (a set of words/spans) that 'lock in' the model prediction locally.\n"
+                "- **Precision**: estimated probability the model keeps the same prediction when the anchor holds.\n"
+                "- **Coverage**: how often the anchor applies under the perturbation distribution.\n"
+                "- Anchors are **black-box**: they only need your model’s `predict_fn`."
+            )
+
+        st.write(f"**Model:** {outputs.get('model', 'NA')}")
+        pred = outputs.get("predicted", {})
+        st.write(f"**Prediction:** {pred.get('label', pred.get('idx', 'NA'))}")
+
+        # Anchor rule (tokens/spans)
+        anchor = outputs.get("anchor", None)
+        if anchor is None:
+            st.warning("No anchor found (try loosening the threshold / increasing samples).")
+        else:
+            # anchor can be list[str] or a string; handle both
+            if isinstance(anchor, list):
+                st.markdown("**Anchor (rule):** " + " ∧ ".join([f"`{a}`" for a in anchor]))
+            else:
+                st.markdown(f"**Anchor (rule):** `{anchor}`")
+
+        # Precision / coverage
+        precision = outputs.get("precision", None)
+        coverage = outputs.get("coverage", None)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.metric("Precision", f"{precision:.3f}" if isinstance(precision, (int, float)) else "NA")
+        with c2:
+            st.metric("Coverage", f"{coverage:.3f}" if isinstance(coverage, (int, float)) else "NA")
+
+        # Optional: show raw params used
+        params = outputs.get("params", None)
+        if params:
+            st.caption("Parameters")
+            st.json(params, expanded=False)
+
+        # Examples where anchor applies / fails (if your plugin returns them)
+        examples = outputs.get("examples", {})
+        if isinstance(examples, dict) and examples:
+            st.markdown("### Examples")
+            ex_cols = st.columns(2)
+
+            with ex_cols[0]:
+                st.markdown("**Where the anchor holds**")
+                ok_ex = examples.get("covered") or examples.get("covered_examples") or []
+                if ok_ex:
+                    for i, ex in enumerate(ok_ex[:10]):
+                        st.write(f"{i+1}. {ex}")
+                else:
+                    st.caption("No examples provided.")
+
+            with ex_cols[1]:
+                st.markdown("**Where it fails / counterexamples**")
+                bad_ex = examples.get("counterexamples") or examples.get("uncovered") or []
+                if bad_ex:
+                    for i, ex in enumerate(bad_ex[:10]):
+                        st.write(f"{i+1}. {ex}")
+                else:
+                    st.caption("No counterexamples provided.")
+
+    
     # ---- Logit Lens output ----
     elif outputs and outputs.get("plugin") == "logit_lens" and outputs.get("layers"):
         st.subheader("Result")

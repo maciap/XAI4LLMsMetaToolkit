@@ -382,3 +382,17 @@ toolkits:
     format: [visual_UI, API_only]
     notes: "Layer-wise vocab projection (logit lens) implemented directly with Hugging Face models: hidden states → (optional final norm) → lm_head → top-k tokens."
 
+
+  - name: Alibi Anchors (AnchorsText)
+    plugin_id: alibi_anchors_text
+    task_input: [classification, general_NLP, NA]
+    access_arch:
+      access: [black_box, mixed]   # model-agnostic; just needs a predict_fn
+      arch: [transformer_general, non_llm, NA]
+    target_scope: local
+    granularity: [token, span, rules, NA]
+    user_goal_audience: [end_user_explain, research_debug, model_eval]
+    fidelity: high
+    format: [rules, ranked_examples, API_only, visual_UI, NA]
+    notes: "Anchors (Ribeiro et al., 2018): high-precision local IF-THEN rules for black-box classifiers. For text, returns anchor words/spans plus estimated precision (>= threshold) and coverage; includes examples where the anchor holds/fails. Key runtime knobs include batch_size, coverage_samples, beam_size."
+
