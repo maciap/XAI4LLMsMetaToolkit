@@ -23,9 +23,10 @@ streamlit run app.py
 ```
 
 #### Currently supported plugins 
-* Captum (attribution)
+* Attribution (Captum)
 * Logit lens (mechanistic interpretability)
 * BertViz (visualization of attention patterns)
+* Anchors (Alibi) - to revise 
 
 
 #### TODO 
