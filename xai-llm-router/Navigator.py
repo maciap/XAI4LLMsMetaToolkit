@@ -1,14 +1,17 @@
 import json
+import re
 from typing import Any, Dict, List, Tuple
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import streamlit.components.v1 as components
+
 from text_to_score import rank_methods
 from toolkits.captum_classifier import CaptumClassifierAttribution
 from toolkits.bertviz_attention import BertVizAttention
 from toolkits.logit_lens import LogitLens
 from toolkits.alibi_anchors_text import AlibiAnchorsText
-import streamlit.components.v1 as components
 # app.py
 
 
@@ -52,6 +55,7 @@ DEFAULTS = {
     "fidelity": "NA",
     "format": "NA",
 }
+
 
 # -------------------------
 # Helpers
@@ -193,6 +197,157 @@ def render_plugin_form(plugin):
 
 
 # -------------------------
+# Selected tool card (NEW)
+# -------------------------
+def _safe(s: str) -> str:
+    return re.sub(r"[<>]", "", s or "")
+
+
+def _chip(text: str):
+    st.markdown(
+        f"""
+        <span style="
+            display:inline-block;
+            padding:0.22rem 0.60rem;
+            margin:0 0.35rem 0.35rem 0;
+            border-radius:999px;
+            border:1px solid #e6e8ec;
+            background:#ffffff;
+            color:#374151;
+            font-size:0.85rem;
+            line-height:1.2;">
+            {text}
+        </span>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_selected_tool_card(selected_item: Dict[str, Any]):
+    """
+    Renders a nice description card for the currently selected method.
+
+    Expected fields in selected_item:
+      - name, notes, meta
+      - description: {overview, main_functionalities}
+      - strengths: [..]
+      - limitations: [..]
+      - research_applications: [{used_in, year, type, source, url, note}, ...]
+    """
+    name = selected_item.get("name", "Selected tool")
+    notes = selected_item.get("notes", "")
+    meta = selected_item.get("meta", {}) or {}
+    desc = selected_item.get("description", {}) or {}
+
+    overview = desc.get("overview") or desc.get("summary") or ""
+    funcs = desc.get("main_functionalities", []) or []
+    strengths = selected_item.get("strengths", []) or []
+    limitations = selected_item.get("limitations", []) or []
+    apps = selected_item.get("research_applications", []) or []
+
+    with st.container(border=True):
+        st.markdown(
+            f"""
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem;">
+              <div>
+                <div style="font-size:1.45rem; font-weight:700; margin-bottom:0.25rem;">
+                 🛠️ {_safe(name)}
+                </div>
+                <div style="color:#6b7280; font-size:0.98rem; line-height:1.35;">
+                  {_safe(overview) if overview else _safe(notes)}
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("<div style='height:0.65rem'></div>", unsafe_allow_html=True)
+
+        # Meta chips
+        chip_map = [
+            ("Scope", meta.get("scope")),
+            ("Access", meta.get("access")),
+            ("Architecture", meta.get("arch")),
+            ("Granularity", meta.get("granularity")),
+            ("Format", meta.get("format")),
+            ("Fidelity", meta.get("fidelity")),
+        ]
+
+        any_chip = False
+        for k, v in chip_map:
+            if not v or v == "NA":
+                continue
+            any_chip = True
+            if isinstance(v, list):
+                v = ", ".join([str(x) for x in v if x and x != "NA"])
+            _chip(f"{k}: {_safe(str(v))}")
+        if not any_chip:
+            st.caption("")
+
+        left, right = st.columns([1.2, 1.0], gap="large")
+
+        with left:
+            st.markdown("#### ⚙️ Main functionalities")
+            if funcs:
+                for x in funcs:
+                    st.write(f"- {x}")
+            else:
+                st.caption("No main functionalities provided for this method yet.")
+
+            if notes and overview:
+                with st.expander("Extra notes", expanded=False):
+                    st.write(notes)
+
+        with right:
+            st.markdown("#### 📊 Strengths vs limitations")
+            s_col, l_col = st.columns(2, gap="medium")
+
+            with s_col:
+                st.markdown("**✅ Strengths**")
+                if strengths:
+                    for x in strengths:
+                        st.markdown(f"<span style='color:#065f46'>• {x}</span>", unsafe_allow_html=True)
+                else:
+                    st.caption("—")
+
+            with l_col:
+                st.markdown("**⚠️ Limitations**")
+                if limitations:
+                    for x in limitations:
+                        st.write(f"- {x}")
+                else:
+                    st.caption("—")
+
+        if apps:
+            with st.expander("📚 Research applications (where it’s used)", expanded=False):
+                for a in apps:
+                    title = a.get("used_in", "Untitled")
+                    year = a.get("year", "")
+                    typ = a.get("type", "")
+                    source = a.get("source", "")
+                    url = a.get("url", "")
+                    note = a.get("note", "")
+
+                    header_bits = " · ".join([str(x) for x in [year, typ, source] if x])
+
+                    if url:
+                        st.markdown(f"**[{title}]({url})**")
+                    else:
+                        st.markdown(f"**{title}**")
+
+                    if header_bits:
+                        st.caption(header_bits)
+                    if note:
+                        st.write(note)
+
+                    st.markdown("---")
+        else:
+            with st.expander("📚 Research applications (where it’s used)", expanded=False):
+                st.caption("No research applications listed for this tool yet.")
+
+
+# -------------------------
 # Streamlit UI
 # -------------------------
 st.set_page_config(page_title="XAI Router for LLMs", layout="wide")
@@ -202,11 +357,13 @@ st.markdown("""
 .block-container { padding-top: 2rem; padding-bottom: 2rem; }
 h1, h2, h3 { font-weight: 600; letter-spacing: -0.2px; }
 
+/* base containers */
 div[data-testid="stContainer"] > div {
   border-radius: 14px !important;
   background-color: #f7f8fa !important;
   border: 1px solid #e6e8ec !important;
   padding: 1.2rem !important;
+  box-shadow: 0 1px 0 rgba(16,24,40,0.02);
 }
 
 div[data-testid="stExpander"] > details {
@@ -214,12 +371,10 @@ div[data-testid="stExpander"] > details {
   border: 1px solid #e6e8ec !important;
   background-color: #f7f8fa !important;
 }
+
+h4 { margin-top: 0.4rem; margin-bottom: 0.4rem; }
 </style>
 """, unsafe_allow_html=True)
-
-#st.title("LLM Explainability Navigator 🧭")
-#st.caption("Discover the tools for explaining LLMs that fit your needs.") 
-
 
 st.markdown("""
 <h1 style="
@@ -237,8 +392,6 @@ st.markdown("""
     Discover the tools for explaining LLMs that fit your needs.
 </p>
 """, unsafe_allow_html=True)
-
-
 
 try:
     methods = load_methods("methods.json")
@@ -319,6 +472,11 @@ if mode == "Pick with filters":
                 "score": float(sc),
                 "reasons": reasons,
                 "notes": m.get("notes", ""),
+                # NEW: carry description fields through to UI
+                "description": m.get("description", {}),
+                "strengths": m.get("strengths", []),
+                "limitations": m.get("limitations", []),
+                "research_applications": m.get("research_applications", []),
                 "meta": {
                     "scope": m.get("target_scope", "NA"),
                     "access": m.get("access_arch", {}).get("access", "NA"),
@@ -365,6 +523,11 @@ else:
                     "score": float(item["final_score"]),
                     "reasons": ["text-match"] + (item.get("soft_reasons") or []),
                     "notes": m.get("notes", ""),
+                    # NEW: carry description fields through to UI
+                    "description": m.get("description", {}),
+                    "strengths": m.get("strengths", []),
+                    "limitations": m.get("limitations", []),
+                    "research_applications": m.get("research_applications", []),
                     "meta": {
                         "scope": m.get("target_scope", "NA"),
                         "access": m.get("access_arch", {}).get("access", "NA"),
@@ -393,18 +556,21 @@ with col_recs:
                 f"**Why:** {', '.join(item['reasons']) if item['reasons'] else 'generic fit'}"
             )
 
-            # disable select if no plugin, but don't show any extra text
             has_plugin = bool(item.get("plugin_id"))
             if st.button("Select", key=f"select_{item['name']}", disabled=not has_plugin):
+                # NEW: store full item so we can render the pretty card
+                st.session_state["selected_item"] = item
                 st.session_state["selected_method"] = item["name"]
                 st.session_state["selected_plugin_id"] = item.get("plugin_id")
                 st.session_state.pop("last_outputs", None)
 
-# Column 3: Selected method + Run + Result (initially empty)
+# Column 3: Selected method + Run + Result
 with col_run:
-    st.subheader("Selected method")
+    st.subheader("Selected tool")
 
     selected_plugin_id = st.session_state.get("selected_plugin_id")
+    selected_item = st.session_state.get("selected_item")
+
     if not selected_plugin_id:
         st.info("Select a runnable method on the left to configure and run it.")
     else:
@@ -412,6 +578,11 @@ with col_run:
         if plugin is None:
             st.error(f"No runnable plugin registered for: {selected_plugin_id}")
         else:
+            # NEW: nice description card
+            if selected_item:
+                render_selected_tool_card(selected_item)
+                st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
+
             st.markdown(f"### {plugin.name}")
             inputs = render_plugin_form(plugin)
 

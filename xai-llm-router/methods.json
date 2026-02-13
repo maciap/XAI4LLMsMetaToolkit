@@ -872,12 +872,58 @@
     "access": ["white_box"],
     "arch": ["decoder", "encdec", "transformer_general", "NA"]
   },
-  "target_scope": "local",
-  "granularity": ["layer", "token"],
-  "user_goal_audience": ["mech_interp", "research_debug", "general_tooling"],
-  "fidelity": "medium",
-  "format": ["visual_UI", "API_only"],
-  "notes": "Layer-wise vocab projection (logit lens) implemented directly with Hugging Face models: hidden states → (optional final norm) → lm_head → top-k tokens."
+  "description": {
+    "overview": "A diagnostic technique that projects intermediate hidden states through the model’s unembedding (LM head) to see which vocabulary tokens each layer is ‘leaning toward’ predicting at a chosen position.",
+    "main_functionalities": [
+      "Layer-by-layer top-k token predictions for a chosen token position",
+      "Track a token’s score/probability across layers (e.g., final-layer top token)",
+      "Optional normalization choices to make intermediate-layer comparisons more meaningful (e.g., handling final LayerNorm)"
+    ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Interpreting GPT: the logit lens (original write-up / introduction)",
+      "type": "blog",
+      "year": 2020,
+      "source": "LessWrong",
+      "url": "https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens",
+      "note": "Introduces the basic idea: unembed intermediate residual stream states to inspect evolving token predictions."
+    },
+    {
+      "used_in": "A Mathematical Framework for Transformer Circuits",
+      "type": "article",
+      "year": 2021,
+      "source": "Transformer Circuits Thread",
+      "url": "https://transformer-circuits.pub/2021/framework/index.html",
+      "note": "Popularizes the residual-stream + unembedding viewpoint and the idea of interpreting intermediate states via logits."
+    },
+    {
+      "used_in": "Visualizing and Interpreting the Semantic Information Flow of Transformers (Findings of EMNLP 2023)",
+      "type": "paper",
+      "year": 2023,
+      "source": "ACL Anthology (PDF)",
+      "url": "https://aclanthology.org/2023.findings-emnlp.939.pdf",
+      "note": "Applies a logit-lens-style projection before/after LayerNorm to study information flow and component effects."
+    },
+    {
+      "used_in": "What Language Do Non-English-Centric Large Language Models Think In? (Findings of ACL 2025)",
+      "type": "paper",
+      "year": 2025,
+      "source": "ACL Anthology (PDF)",
+      "url": "https://aclanthology.org/2025.findings-acl.1350.pdf",
+      "note": "Uses logit lens as a measurement tool to detect latent language signals across layers."
+    }
+  ],
+  "strengths": [
+    "Fast and simple: a single forward pass can give layer-wise token tendencies",
+    "Great for mechanistic debugging: shows *when* a representation becomes linearly decodable into the final vocabulary space",
+    "Works naturally with decoder LMs (and often encoder-decoder) without needing perturbation sampling"
+  ],
+  "limitations": [
+    "Not causal: shows what is decodable via the unembedding, not what is necessary for the final prediction",
+    "LayerNorm / scaling matters: intermediate states may not be comparable to final-layer states without careful normalization",
+    "Top-k tokens can be misleading when probability mass is diffuse; consider adding entropy/margin diagnostics if you extend the UI"
+  ]
 }, 
 {
   "name": "Alibi Anchors (AnchorsText)",
