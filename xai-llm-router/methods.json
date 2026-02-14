@@ -926,6 +926,87 @@
   ]
 }, 
 {
+  "name": "Direct Logit Attribution",
+  "plugin_id": "direct_logit_attribution",
+  "task_input": ["generation", "seq2seq", "general_NLP", "NA"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder", "encdec", "transformer_general", "NA"]
+  },
+  "description": {
+    "overview": "A diagnostic technique that attributes a chosen target token’s logit to internal transformer components by projecting each component’s output vector onto the target token’s unembedding direction (LM head). Positive contributions push the model toward the target token; negative contributions push it away.",
+    "main_functionalities": [
+      "Compute signed contributions of transformer components (e.g., per-layer attention output, per-layer MLP output) to a chosen target token logit at a chosen position",
+      "Rank components by absolute contribution for quick identification of which layers/components most strongly support or oppose a target prediction",
+      "Support both automatic target selection (model’s predicted next token) and manual target token selection (single-token string / token id)",
+      "Return JSON-friendly, human-readable outputs for UI tables/plots (component name, type, layer index, signed contribution, absolute share)"
+    ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Attribution Patching: Activation Patching At Industrial Scale",
+      "type": "blog",
+      "year": 2023,
+      "source": "neelnanda.io",
+      "url": "https://www.neelnanda.io/mechanistic-interpretability/attribution-patching",
+      "note": "Discusses direct logit attribution as a simple instance of (direct) path patching to logits: measuring the direct contribution of component outputs to logits."
+    },
+    {
+      "used_in": "TransformerLens documentation (ActivationCache.decompose_resid)",
+      "type": "documentation",
+      "year": 2023,
+      "source": "transformerlensorg.github.io",
+      "url": "https://transformerlensorg.github.io/TransformerLens/generated/code/transformer_lens.ActivationCache.html",
+      "note": "Provides tooling for decomposing the residual stream into component outputs, explicitly motivated by use-cases like direct logit attribution."
+    },
+    {
+      "used_in": "A Mathematical Framework for Transformer Circuits",
+      "type": "article",
+      "year": 2021,
+      "source": "Transformer Circuits Thread",
+      "url": "https://transformer-circuits.pub/2021/framework/index.html",
+      "note": "Popularizes the residual-stream-as-sum-of-components view, which motivates projecting component outputs into logit space to interpret which parts write evidence for a prediction."
+    },
+    {
+      "used_in": "An Adversarial Example for Direct Logit Attribution: Memory Management in GELU-4L",
+      "type": "paper",
+      "year": 2024,
+      "source": "arXiv",
+      "url": "https://arxiv.org/html/2310.07325v4",
+      "note": "Shows concrete cases where DLA can be misleading under erasure/cleanup (memory management), highlighting important failure modes."
+    },
+    {
+      "used_in": "An adversarial example for Direct Logit Attribution: memory management in gelu-4l",
+      "type": "blog",
+      "year": 2023,
+      "source": "AI Alignment Forum",
+      "url": "https://www.alignmentforum.org/posts/2PucFqdRyEvaHb4Hn/an-adversarial-example-for-direct-logit-attribution-memory",
+      "note": "Accessible write-up demonstrating how cleanup behavior can break naive DLA interpretations."
+    }
+  ],
+  "strengths": [
+    "Fast and simple: requires only one forward pass plus linear projections of component outputs into the unembedding direction",
+    "Highly interpretable sign: positive contributions provide direct evidence for the target token; negative contributions provide direct counter-evidence",
+    "Useful for locating the ‘end of a circuit’: quickly identifies which layers/components most directly write toward a specific token prediction",
+    "Works well as a companion to causal methods: DLA is a good first diagnostic before doing more expensive interventions (activation patching / path patching)"
+  ],
+  "limitations": [
+    "Not causal: a large positive contribution does not imply the component is necessary for the prediction (downstream components may override/cancel it)",
+    "Ignores softmax competition (attention-weight coupling) and other nonlinearities: the component output is treated as an additive vector even though it was produced by nonlinear computation",
+    "LayerNorm and scaling can matter: whether you project pre/post normalization affects interpretability; different architectures apply norms in different places",
+    "Can be misleading under ‘cleanup/erasure’ behavior where later components actively remove earlier-written directions from the residual stream"
+  ],
+  "recommended_ui_outputs": [
+    "Ranked table of components with signed contribution, absolute contribution, and percentage share of absolute contribution",
+    "Bar chart of contributions (signed) for the top-N components",
+    "Metadata panel: model name, inspected position, target token (id + pretty token), predicted next token, total target logit"
+  ],
+  "implementation_notes": [
+    "HF-native version typically attributes per-layer attention-module outputs and per-layer MLP-module outputs; per-head attribution requires deeper, architecture-specific hooks.",
+    "For manual target tokens, require that the provided string maps to exactly one token id (or accept token id directly) to avoid ambiguity."
+  ]
+},
+{
   "name": "Alibi Anchors (AnchorsText)",
   "plugin_id": "alibi_anchors_text",
   "task_input": ["classification", "general_NLP", "NA"],

@@ -15,6 +15,7 @@ from toolkits.captum_classifier import CaptumClassifierAttribution
 from toolkits.bertviz_attention import BertVizAttention
 from toolkits.logit_lens import LogitLens
 from toolkits.alibi_anchors_text import AlibiAnchorsText
+from toolkits.direct_logit_attribution import DirectLogitAttribution
 
 
 @st.cache_resource
@@ -23,13 +24,15 @@ def get_plugins():
     plugin2 = BertVizAttention()
     plugin3 = LogitLens()
     plugin4 = AlibiAnchorsText()
+    plugin5 = DirectLogitAttribution()
+
     return {
         plugin1.id: plugin1,
         plugin2.id: plugin2,
         plugin3.id: plugin3,
         plugin4.id: plugin4,
+        plugin5.id: plugin5,
     }
-
 
 PLUGINS = get_plugins()
 
@@ -788,6 +791,7 @@ with col_run:
                         else:
                             st.caption("No counterexamples provided.")
 
+
             elif outputs and outputs.get("plugin") == "logit_lens" and outputs.get("layers"):
                 st.subheader("Result")
                 with st.expander("ℹ️ How to read Logit Lens", expanded=True):
@@ -846,3 +850,68 @@ with col_run:
                     plt.title("Probability of the final-layer top token across layers")
                     plt.tight_layout()
                     st.pyplot(fig2)
+
+            
+
+
+            elif outputs and outputs.get("plugin") == "direct_logit_attribution" and outputs.get("components"):
+                st.subheader("Result")
+                with st.expander("ℹ️ How to read Direct Logit Attribution (DLA)", expanded=True):
+                    st.write(
+                        "- **DLA** decomposes a single **target logit** into contributions from transformer components.\n"
+                        "- Each component output vector is projected onto the **unembedding direction** of the target token.\n"
+                        "- Positive values push the model *toward* the target token; negative values push it *away*.\n"
+                        "- This is a **linear diagnostic** view (not fully causal): it ignores softmax coupling and other nonlinear interactions."
+                    )
+
+                st.write(f"**Model:** {outputs.get('model', 'NA')}")
+                st.write(f"**Architecture detected:** {outputs.get('arch_detected', 'NA')}")
+                st.write(f"**Text length (tokens):** {len(outputs.get('tokens', []))}")
+                st.write(f"**Position inspected:** {outputs.get('position', 'NA')} (0-based index)")
+                
+
+                pred = outputs.get("predicted_next", {})
+                tgt = outputs.get("target", {})
+                st.write(f"**Predicted next token:** {pred.get('token','NA')}  (id={pred.get('id','NA')})")
+                st.write(f"**Target token:** {tgt.get('token','NA')}  (id={tgt.get('id','NA')}, mode={tgt.get('mode','NA')})")
+                st.write(f"**Total target logit:** {outputs.get('total_logit', 0.0):.4f}")
+
+                toks = outputs.get("tokens", [])
+                if toks:
+                    preview = " ".join([f"{i}:{t}" for i, t in enumerate(toks)])
+                    st.caption("Tokenization (index:token)")
+                    st.code(preview)
+
+                comps = outputs["components"]
+                df = pd.DataFrame(comps)
+
+                # Optional UI controls
+                sort_mode = st.selectbox("Sort components by", ["abs_contribution (desc)", "contribution (desc)", "layer (asc)"])
+                if sort_mode == "contribution (desc)":
+                    df = df.sort_values("contribution", ascending=False)
+                elif sort_mode == "layer (asc)":
+                    df = df.sort_values(["layer", "type"], ascending=True)
+                else:
+                    df = df.sort_values("abs_contribution", ascending=False)
+
+                st.markdown(f"### Top-{outputs.get('top_n', len(df))} component contributions")
+                st.dataframe(df, use_container_width=True)
+
+                # Bar plot of contributions
+                fig = plt.figure()
+                plt.bar(range(len(df)), df["contribution"].tolist())
+                plt.xticks(range(len(df)), df["component"].tolist(), rotation=60, ha="right")
+                plt.ylabel("Contribution to target logit")
+                plt.title("Direct Logit Attribution (component → target logit)")
+                plt.tight_layout()
+                st.pyplot(fig)
+
+                # Notes
+                notes = outputs.get("notes", [])
+                if notes:
+                    with st.expander("Notes / caveats", expanded=False):
+                        for n in notes:
+                            st.write(f"- {n}")
+
+                            
+
