@@ -110,14 +110,13 @@ def softmax(x: np.ndarray, temperature: float = 0.7) -> np.ndarray:
 # -------------------------
 # Embedder (cached manually)
 # -------------------------
+# We avoid Streamlit caching here so the module is pure Python.
+# You can still cache at the Streamlit level in app.py if you want.
 _EMBEDDER: Optional[SentenceTransformer] = None
 _EMBEDDER_NAME: Optional[str] = None
 
 # Cache label embeddings per (model_name, dim, dim_values_tuple)
 _LABEL_EMB_CACHE: Dict[Tuple[str, str, Tuple[str, ...]], np.ndarray] = {}
-
-# NEW: cache method embeddings per (model_name, method_name, text_hash)
-_METHOD_EMB_CACHE: Dict[Tuple[str, str, int], np.ndarray] = {}
 
 
 def get_embedder(model_name: str) -> SentenceTransformer:
@@ -134,9 +133,6 @@ def embed_texts(model_name: str, texts: List[str]) -> np.ndarray:
     return np.asarray(emb, dtype=np.float32)
 
 
-# -------------------------
-# (A) Category-based scoring (your original approach)
-# -------------------------
 def build_label_prompts(dim: str, dim_values: List[str]) -> List[str]:
     desc_map = LABEL_DESCRIPTIONS.get(dim, {})
     prompts = []
@@ -158,9 +154,11 @@ def predict_dim_probs(
     """
     user_text = (user_text or "").strip()
     if not user_text:
+        # If no text, return uniform distribution
         p = 1.0 / max(len(dim_values), 1)
         return {v: p for v in dim_values}
 
+    # Cache label embeddings so we only embed label prompts once.
     key = (model_name, dim, tuple(dim_values))
     if key in _LABEL_EMB_CACHE:
         label_embs = _LABEL_EMB_CACHE[key]
@@ -196,6 +194,9 @@ def predict_all_probs(
     return out
 
 
+# -------------------------
+# Soft scoring for a method using text_probs
+# -------------------------
 def method_text_score(
     method: Dict[str, Any],
     text_probs: Dict[str, Dict[str, float]],
@@ -212,62 +213,62 @@ def method_text_score(
     count = 0
     reasons: List[str] = []
 
+    # task_input
     tasks = norm_list(method.get("task_input", []))
     if tasks:
         p = max(text_probs.get("task", {}).get(t, 0.0) for t in tasks)
-        total += p
-        count += 1
+        total += p; count += 1
         reasons.append(f"text→task {p:.2f}")
 
+    # access_arch.access
     accs = norm_list(method.get("access_arch", {}).get("access", "NA"))
     if accs:
         p = max(text_probs.get("access", {}).get(a, 0.0) for a in accs)
-        total += p
-        count += 1
+        total += p; count += 1
         reasons.append(f"text→access {p:.2f}")
 
+    # access_arch.arch
     archs = norm_list(method.get("access_arch", {}).get("arch", "NA"))
     if archs:
         p = max(text_probs.get("arch", {}).get(a, 0.0) for a in archs)
-        total += p
-        count += 1
+        total += p; count += 1
         reasons.append(f"text→arch {p:.2f}")
 
+    # target_scope
     sc = method.get("target_scope", "NA")
     if sc:
         scs = norm_list(sc)
         p = max(text_probs.get("scope", {}).get(s, 0.0) for s in scs)
-        total += p
-        count += 1
+        total += p; count += 1
         reasons.append(f"text→scope {p:.2f}")
 
+    # granularity
     grans = norm_list(method.get("granularity", []))
     if grans:
         p = max(text_probs.get("granularity", {}).get(g, 0.0) for g in grans)
-        total += p
-        count += 1
+        total += p; count += 1
         reasons.append(f"text→gran {p:.2f}")
 
+    # goal / audience
     goals = norm_list(method.get("user_goal_audience", []))
     if goals:
         p = max(text_probs.get("goal", {}).get(g, 0.0) for g in goals)
-        total += p
-        count += 1
+        total += p; count += 1
         reasons.append(f"text→goal {p:.2f}")
 
+    # fidelity
     fid = method.get("fidelity", "NA")
     if fid:
         fids = norm_list(fid)
         p = max(text_probs.get("fidelity", {}).get(f, 0.0) for f in fids)
-        total += p
-        count += 1
+        total += p; count += 1
         reasons.append(f"text→fidelity {p:.2f}")
 
+    # format
     fmts = norm_list(method.get("format", []))
     if fmts:
         p = max(text_probs.get("format", {}).get(f, 0.0) for f in fmts)
-        total += p
-        count += 1
+        total += p; count += 1
         reasons.append(f"text→format {p:.2f}")
 
     if count == 0:
@@ -287,11 +288,9 @@ def rank_methods(
     soft_scale: float = 10.0,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, float]]]:
     """
-    Category-based ranker (kept for backwards compatibility).
-
     Returns (ranked_methods, text_probs).
 
-    - base_scores: optional mapping {method_name: numeric_score}
+    - base_scores: optional mapping {method_name: numeric_score} (e.g., from your current discrete score()).
     - final_score = base_score + text_weight * soft_scale * soft_score
     """
     text_probs = {}
@@ -314,129 +313,14 @@ def rank_methods(
         soft, soft_reasons = method_text_score(m, text_probs) if text_probs else (0.0, [])
         final = base + float(text_weight) * float(soft_scale) * float(soft)
 
-        ranked.append(
-            {
-                "method": m,
-                "name": name,
-                "base_score": base,
-                "soft_score": soft,
-                "final_score": final,
-                "soft_reasons": soft_reasons,
-            }
-        )
+        ranked.append({
+            "method": m,
+            "name": name,
+            "base_score": base,
+            "soft_score": soft,
+            "final_score": final,
+            "soft_reasons": soft_reasons,
+        })
 
     ranked.sort(key=lambda x: x["final_score"], reverse=True)
     return ranked, text_probs
-
-
-# -------------------------
-# (B) NEW: Plain text-to-method-description ranking (requested)
-# -------------------------
-def _join_clean(xs: List[str]) -> str:
-    return "; ".join([str(x).strip() for x in xs if str(x).strip()])
-
-
-def method_to_text(method: Dict[str, Any]) -> str:
-    """
-    Build a single natural-language description for a method.
-    This is what we match against the user's free-text query.
-    """
-    name = str(method.get("name", "")).strip()
-    notes = str(method.get("notes", "")).strip()
-
-    desc = method.get("description", {}) or {}
-    overview = str(desc.get("overview") or desc.get("summary") or "").strip()
-    funcs = method.get("description", {}).get("main_functionalities", []) if isinstance(method.get("description", {}), dict) else []
-    funcs = norm_list(funcs)
-
-    strengths = norm_list(method.get("strengths", []))
-    limitations = norm_list(method.get("limitations", []))
-
-    # Include metadata as plain language (helps matching "black-box", "visual UI", etc.)
-    tasks = norm_list(method.get("task_input", []))
-    access = norm_list(method.get("access_arch", {}).get("access", []))
-    arch = norm_list(method.get("access_arch", {}).get("arch", []))
-    scope = str(method.get("target_scope", "")).strip()
-    gran = norm_list(method.get("granularity", []))
-    goal = norm_list(method.get("user_goal_audience", []))
-    fidelity = str(method.get("fidelity", "")).strip()
-    fmt = norm_list(method.get("format", []))
-
-    parts = [
-        f"Name: {name}" if name else "",
-        f"Overview: {overview}" if overview else "",
-        f"Notes: {notes}" if notes else "",
-        f"Main functionalities: {_join_clean(funcs)}" if funcs else "",
-        f"Strengths: {_join_clean(strengths)}" if strengths else "",
-        f"Limitations: {_join_clean(limitations)}" if limitations else "",
-        f"Task: {_join_clean(tasks)}" if tasks else "",
-        f"Access: {_join_clean(access)}" if access else "",
-        f"Architecture: {_join_clean(arch)}" if arch else "",
-        f"Scope: {scope}" if scope else "",
-        f"Granularity: {_join_clean(gran)}" if gran else "",
-        f"Goal: {_join_clean(goal)}" if goal else "",
-        f"Fidelity: {fidelity}" if fidelity else "",
-        f"Format: {_join_clean(fmt)}" if fmt else "",
-    ]
-
-    return "\n".join([p for p in parts if p.strip()])
-
-
-def method_semantic_score(
-    method: Dict[str, Any],
-    user_text: str,
-    model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
-) -> Tuple[float, List[str]]:
-    """
-    Returns (cosine_similarity, reasons).
-    Embeddings are normalized so dot product == cosine similarity in [-1, 1].
-    """
-    user_text = (user_text or "").strip()
-    if not user_text:
-        return 0.0, []
-
-    method_text = method_to_text(method)
-    key = (model_name, method.get("name", "NA"), hash(method_text))
-
-    if key in _METHOD_EMB_CACHE:
-        m_emb = _METHOD_EMB_CACHE[key]
-    else:
-        m_emb = embed_texts(model_name, [method_text])[0]
-        _METHOD_EMB_CACHE[key] = m_emb
-
-    u_emb = embed_texts(model_name, [user_text])[0]
-    sim = float(m_emb @ u_emb)
-
-    return sim, [f"text↔method sim {sim:.2f}"]
-
-
-def rank_methods_plaintext(
-    methods: List[Dict[str, Any]],
-    user_text: str,
-    model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
-) -> Tuple[List[Dict[str, Any]], Dict[str, Dict[str, float]]]:
-    """
-    Plain semantic ranker: ranks by cosine similarity between user_text and method description text.
-
-    Returns (ranked_methods, text_probs) for drop-in compatibility with your app code.
-    Here text_probs is {} because we are not predicting category distributions.
-    """
-    user_text = (user_text or "").strip()
-    ranked: List[Dict[str, Any]] = []
-
-    for m in methods:
-        name = m.get("name", "NA")
-        sim, reasons = method_semantic_score(m, user_text, model_name=model_name)
-        ranked.append(
-            {
-                "method": m,
-                "name": name,
-                "base_score": 0.0,
-                "soft_score": sim,         # similarity instead of [0,1] category score
-                "final_score": sim,        # we rank directly by similarity
-                "soft_reasons": reasons,
-            }
-        )
-
-    ranked.sort(key=lambda x: x["final_score"], reverse=True)
-    return ranked, {}

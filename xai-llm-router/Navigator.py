@@ -1,3 +1,6 @@
+# ✅ UPDATED DESIGN: Hard constraints vs Preferences (ranking only)
+# Paste this as your app.py (it’s your code with minimal, targeted edits).
+
 import json
 import re
 from typing import Any, Dict, List, Tuple
@@ -12,7 +15,6 @@ from toolkits.captum_classifier import CaptumClassifierAttribution
 from toolkits.bertviz_attention import BertVizAttention
 from toolkits.logit_lens import LogitLens
 from toolkits.alibi_anchors_text import AlibiAnchorsText
-# app.py
 
 
 @st.cache_resource
@@ -56,6 +58,10 @@ DEFAULTS = {
     "format": "NA",
 }
 
+# Hard vs preference dims (UI clarity + logic)
+HARD_DIMS = ["task", "access", "arch", "scope"]
+PREF_DIMS = ["granularity", "goal", "fidelity", "format"]
+
 
 # -------------------------
 # Helpers
@@ -78,66 +84,88 @@ def load_methods(path: str = "methods.json") -> List[Dict[str, Any]]:
     raise ValueError("methods.json must be a list or a dict with key 'toolkits'.")
 
 
-def feasible(user: Dict[str, str], m: Dict[str, Any]) -> Tuple[bool, str]:
+def feasible(hard: Dict[str, str], m: Dict[str, Any]) -> Tuple[bool, str]:
+    """Hard constraints only: exclude tools that cannot work in the requested setting."""
     # Task
-    if user["task"] != "NA":
+    if hard["task"] != "NA":
         tasks = norm_list(m.get("task_input", []))
-        if user["task"] not in tasks and "general_NLP" not in tasks:
+        if hard["task"] not in tasks and "general_NLP" not in tasks:
             return False, f"task mismatch (needs {tasks or 'NA'})"
 
     # Access
-    if user["access"] != "NA":
+    if hard["access"] != "NA":
         acc = m.get("access_arch", {}).get("access", "NA")
         accs = norm_list(acc)
-        if user["access"] not in accs and "mixed" not in accs and "NA" not in accs:
+        if hard["access"] not in accs and "mixed" not in accs and "NA" not in accs:
             return False, f"access mismatch (method {accs})"
 
     # Architecture
-    if user["arch"] != "NA":
+    if hard["arch"] != "NA":
         arch = m.get("access_arch", {}).get("arch", "NA")
         archs = norm_list(arch)
-        if user["arch"] not in archs and "transformer_general" not in archs and "NA" not in archs:
+        if hard["arch"] not in archs and "transformer_general" not in archs and "NA" not in archs:
             return False, f"arch mismatch (method {archs})"
 
     # Scope
-    if user["scope"] != "NA":
+    if hard["scope"] != "NA":
         sc = m.get("target_scope", "NA")
-        if sc not in ["NA", "both"] and user["scope"] != sc:
+        if sc not in ["NA", "both"] and hard["scope"] != sc:
             return False, f"scope mismatch (method {sc})"
 
     return True, ""
 
 
-def score(user: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str]]:
+def score(prefs: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str], List[str]]:
+    """
+    Preferences-only scoring:
+    - returns (score, matched_reasons, mismatched_reasons)
+    - mismatches are surfaced in UI to make it obvious these are not filters.
+    """
     s = 0
-    reasons = []
+    matched: List[str] = []
+    mismatched: List[str] = []
 
-    if user["task"] != "NA" and user["task"] in norm_list(m.get("task_input", [])):
-        s += 2
-        reasons.append("task match")
-
-    if user["granularity"] != "NA" and user["granularity"] in norm_list(m.get("granularity", [])):
-        s += 2
-        reasons.append("granularity match")
-
-    if user["goal"] != "NA" and user["goal"] in norm_list(m.get("user_goal_audience", [])):
-        s += 2
-        reasons.append("goal match")
-
-    if user["format"] != "NA" and user["format"] in norm_list(m.get("format", [])):
-        s += 2
-        reasons.append("format match")
-
-    if user["fidelity"] != "NA":
-        f = m.get("fidelity", "NA")
-        if f == user["fidelity"]:
+    # Granularity
+    if prefs["granularity"] != "NA":
+        grans = norm_list(m.get("granularity", []))
+        if prefs["granularity"] in grans:
             s += 2
-            reasons.append("fidelity match")
+            matched.append("🔍 granularity match")
+        else:
+            mismatched.append(f"🔍 granularity mismatch (wants {prefs['granularity']}, has {grans or 'NA'})")
+
+    # Goal
+    if prefs["goal"] != "NA":
+        goals = norm_list(m.get("user_goal_audience", []))
+        if prefs["goal"] in goals:
+            s += 2
+            matched.append("🎯 goal match")
+        else:
+            mismatched.append(f"🎯 goal mismatch (wants {prefs['goal']}, has {goals or 'NA'})")
+
+    # Format
+    if prefs["format"] != "NA":
+        fmts = norm_list(m.get("format", []))
+        if prefs["format"] in fmts:
+            s += 2
+            matched.append("🖥️ format match")
+        else:
+            mismatched.append(f"🖥️ format mismatch (wants {prefs['format']}, has {fmts or 'NA'})")
+
+    # Fidelity (keep your “mixed gives partial credit” idea, but label it clearly)
+    if prefs["fidelity"] != "NA":
+        f = m.get("fidelity", "NA")
+        if f == prefs["fidelity"]:
+            s += 2
+            matched.append("🧪 fidelity match")
         elif f == "mixed":
             s += 1
-            reasons.append("fidelity partially supported")
+            matched.append("🧪 fidelity partially supported (tool is mixed)")
+            mismatched.append(f"🧪 fidelity preference not exact (wants {prefs['fidelity']}, tool is mixed)")
+        else:
+            mismatched.append(f"🧪 fidelity mismatch (wants {prefs['fidelity']}, has {f})")
 
-    return s, reasons
+    return s, matched, mismatched
 
 
 def render_plugin_form(plugin):
@@ -197,7 +225,7 @@ def render_plugin_form(plugin):
 
 
 # -------------------------
-# Selected tool card (NEW)
+# Selected tool card
 # -------------------------
 def _safe(s: str) -> str:
     return re.sub(r"[<>]", "", s or "")
@@ -224,16 +252,6 @@ def _chip(text: str):
 
 
 def render_selected_tool_card(selected_item: Dict[str, Any]):
-    """
-    Renders a nice description card for the currently selected method.
-
-    Expected fields in selected_item:
-      - name, notes, meta
-      - description: {overview, main_functionalities}
-      - strengths: [..]
-      - limitations: [..]
-      - research_applications: [{used_in, year, type, source, url, note}, ...]
-    """
     name = selected_item.get("name", "Selected tool")
     notes = selected_item.get("notes", "")
     meta = selected_item.get("meta", {}) or {}
@@ -264,7 +282,6 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
 
         st.markdown("<div style='height:0.65rem'></div>", unsafe_allow_html=True)
 
-        # Meta chips
         chip_map = [
             ("Scope", meta.get("scope")),
             ("Access", meta.get("access")),
@@ -294,7 +311,6 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
                     st.write(f"- {x}")
             else:
                 st.caption("No main functionalities provided for this method yet.")
-
             if notes and overview:
                 with st.expander("Extra notes", expanded=False):
                     st.write(notes)
@@ -352,7 +368,8 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
 # -------------------------
 st.set_page_config(page_title="XAI Router for LLMs", layout="wide")
 
-st.markdown("""
+st.markdown(
+    """
 <style>
 .block-container { padding-top: 2rem; padding-bottom: 2rem; }
 h1, h2, h3 { font-weight: 600; letter-spacing: -0.2px; }
@@ -374,9 +391,12 @@ div[data-testid="stExpander"] > details {
 
 h4 { margin-top: 0.4rem; margin-bottom: 0.4rem; }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
-st.markdown("""
+st.markdown(
+    """
 <h1 style="
     font-size: 2.6rem;
     font-weight: 700;
@@ -391,7 +411,9 @@ st.markdown("""
 ">
     Discover the tools for explaining LLMs that fit your needs.
 </p>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 try:
     methods = load_methods("methods.json")
@@ -399,6 +421,9 @@ except Exception as e:
     st.error(f"Failed to load methods.json: {e}")
     st.stop()
 
+# -------------------------
+# Sidebar: hard constraints vs preferences (NEW)
+# -------------------------
 with st.sidebar:
     st.header("Tell me what you are looking for!")
 
@@ -410,18 +435,27 @@ with st.sidebar:
 
     top_k = st.slider("Max recommendations", 5, 50, 20)
 
-    user: Dict[str, str] = {}
+    hard: Dict[str, str] = {k: "NA" for k in DIM_VALUES.keys()}
+    prefs: Dict[str, str] = {k: "NA" for k in DIM_VALUES.keys()}
     user_text = ""
 
     if mode == "Pick with filters":
-        user["task"] = st.selectbox("Task", DIM_VALUES["task"], index=DIM_VALUES["task"].index(DEFAULTS["task"]))
-        user["access"] = st.selectbox("Model access", DIM_VALUES["access"], index=DIM_VALUES["access"].index(DEFAULTS["access"]))
-        user["arch"] = st.selectbox("Architecture", DIM_VALUES["arch"], index=DIM_VALUES["arch"].index(DEFAULTS["arch"]))
-        user["scope"] = st.selectbox("Explanation scope", DIM_VALUES["scope"], index=DIM_VALUES["scope"].index(DEFAULTS["scope"]))
-        user["granularity"] = st.selectbox("Granularity", DIM_VALUES["granularity"], index=DIM_VALUES["granularity"].index(DEFAULTS["granularity"]))
-        user["goal"] = st.selectbox("Goal / audience", DIM_VALUES["goal"], index=DIM_VALUES["goal"].index(DEFAULTS["goal"]))
-        user["fidelity"] = st.selectbox("Fidelity requirement", DIM_VALUES["fidelity"], index=DIM_VALUES["fidelity"].index(DEFAULTS["fidelity"]))
-        user["format"] = st.selectbox("Explanation format", DIM_VALUES["format"], index=DIM_VALUES["format"].index(DEFAULTS["format"]))
+        with st.expander("✅ Hard constraints (filters)", expanded=True):
+            st.caption("These are *must-have*. Tools that don't satisfy these will be hidden.")
+            hard["task"] = st.selectbox("Task (hard)", DIM_VALUES["task"], index=DIM_VALUES["task"].index(DEFAULTS["task"]))
+            hard["access"] = st.selectbox("Model access (hard)", DIM_VALUES["access"], index=DIM_VALUES["access"].index(DEFAULTS["access"]))
+            hard["arch"] = st.selectbox("Architecture (hard)", DIM_VALUES["arch"], index=DIM_VALUES["arch"].index(DEFAULTS["arch"]))
+            hard["scope"] = st.selectbox("Explanation scope (hard)", DIM_VALUES["scope"], index=DIM_VALUES["scope"].index(DEFAULTS["scope"]))
+
+        with st.expander("⭐ Preferences (ranking only)", expanded=True):
+            st.caption("These do *not* hide tools. They only affect ordering and the 'matches/mismatches' info.")
+            prefs["granularity"] = st.selectbox("Granularity (preference)", DIM_VALUES["granularity"], index=DIM_VALUES["granularity"].index(DEFAULTS["granularity"]))
+            prefs["goal"] = st.selectbox("Goal / audience (preference)", DIM_VALUES["goal"], index=DIM_VALUES["goal"].index(DEFAULTS["goal"]))
+            prefs["fidelity"] = st.selectbox("Fidelity (preference)", DIM_VALUES["fidelity"], index=DIM_VALUES["fidelity"].index(DEFAULTS["fidelity"]))
+            prefs["format"] = st.selectbox("Explanation format (preference)", DIM_VALUES["format"], index=DIM_VALUES["format"].index(DEFAULTS["format"]))
+
+        st.info("Tip: If a tool appears but doesn't match your format/fidelity, it’s because those are preferences (ranking), not filters.")
+
     else:
         user_text = st.text_area(
             "Describe it in words",
@@ -435,18 +469,18 @@ with st.sidebar:
 
         add_hard = st.checkbox("Add hard constraints too", value=False)
 
-        user = {k: "NA" for k in DIM_VALUES.keys()}
-
         if add_hard:
-            st.markdown("**Hard constraints (optional)**")
-            user["task"] = st.selectbox("Task (hard)", DIM_VALUES["task"], index=0)
-            user["access"] = st.selectbox("Model access (hard)", DIM_VALUES["access"], index=0)
-            user["arch"] = st.selectbox("Architecture (hard)", DIM_VALUES["arch"], index=0)
-            user["scope"] = st.selectbox("Explanation scope (hard)", DIM_VALUES["scope"], index=0)
-            user["granularity"] = st.selectbox("Granularity (hard)", DIM_VALUES["granularity"], index=0)
-            user["goal"] = st.selectbox("Goal / audience (hard)", DIM_VALUES["goal"], index=0)
-            user["fidelity"] = st.selectbox("Fidelity requirement (hard)", DIM_VALUES["fidelity"], index=0)
-            user["format"] = st.selectbox("Explanation format (hard)", DIM_VALUES["format"], index=0)
+            with st.expander("✅ Hard constraints (optional)", expanded=True):
+                hard["task"] = st.selectbox("Task (hard)", DIM_VALUES["task"], index=0)
+                hard["access"] = st.selectbox("Model access (hard)", DIM_VALUES["access"], index=0)
+                hard["arch"] = st.selectbox("Architecture (hard)", DIM_VALUES["arch"], index=0)
+                hard["scope"] = st.selectbox("Explanation scope (hard)", DIM_VALUES["scope"], index=0)
+
+        with st.expander("⭐ Preferences (optional, ranking only)", expanded=True):
+            prefs["granularity"] = st.selectbox("Granularity (preference)", DIM_VALUES["granularity"], index=0)
+            prefs["goal"] = st.selectbox("Goal / audience (preference)", DIM_VALUES["goal"], index=0)
+            prefs["fidelity"] = st.selectbox("Fidelity (preference)", DIM_VALUES["fidelity"], index=0)
+            prefs["format"] = st.selectbox("Explanation format (preference)", DIM_VALUES["format"], index=0)
 
         temperature = st.slider("Text model temperature", 0.2, 1.5, 0.7, 0.05)
         show_text_prefs = st.checkbox("Show predicted preferences", value=True)
@@ -459,20 +493,20 @@ excluded: List[Dict[str, Any]] = []
 
 if mode == "Pick with filters":
     for m in methods:
-        ok, why = feasible(user, m)
+        ok, why = feasible(hard, m)
         if not ok:
             excluded.append({"name": m.get("name", "NA"), "why": why, "notes": m.get("notes", "")})
             continue
 
-        sc, reasons = score(user, m)
+        sc, matched, mismatched = score(prefs, m)
         recommended.append(
             {
                 "name": m.get("name", "NA"),
                 "plugin_id": m.get("plugin_id"),
                 "score": float(sc),
-                "reasons": reasons,
+                "matched": matched,
+                "mismatched": mismatched,
                 "notes": m.get("notes", ""),
-                # NEW: carry description fields through to UI
                 "description": m.get("description", {}),
                 "strengths": m.get("strengths", []),
                 "limitations": m.get("limitations", []),
@@ -485,11 +519,14 @@ if mode == "Pick with filters":
                     "format": m.get("format", "NA"),
                     "fidelity": m.get("fidelity", "NA"),
                 },
+                "hard_used": {k: hard.get(k, "NA") for k in HARD_DIMS},
+                "prefs_used": {k: prefs.get(k, "NA") for k in PREF_DIMS},
             }
         )
 
     recommended.sort(key=lambda x: x["score"], reverse=True)
     text_probs = {}
+
 else:
     if not user_text.strip():
         st.warning("Write a short description to get text-based recommendations.")
@@ -498,7 +535,7 @@ else:
     else:
         filtered_methods = []
         for m in methods:
-            ok, why = feasible(user, m)
+            ok, why = feasible(hard, m)
             if not ok:
                 excluded.append({"name": m.get("name", "NA"), "why": why, "notes": m.get("notes", "")})
                 continue
@@ -516,14 +553,18 @@ else:
 
         for item in ranked:
             m = item["method"]
+
+            # Also compute the preference breakdown for transparency
+            sc, matched, mismatched = score(prefs, m)
+
             recommended.append(
                 {
                     "name": item["name"],
                     "plugin_id": m.get("plugin_id"),
                     "score": float(item["final_score"]),
-                    "reasons": ["text-match"] + (item.get("soft_reasons") or []),
+                    "matched": ["🧠 text match"] + matched,
+                    "mismatched": mismatched,
                     "notes": m.get("notes", ""),
-                    # NEW: carry description fields through to UI
                     "description": m.get("description", {}),
                     "strengths": m.get("strengths", []),
                     "limitations": m.get("limitations", []),
@@ -536,6 +577,8 @@ else:
                         "format": m.get("format", "NA"),
                         "fidelity": m.get("fidelity", "NA"),
                     },
+                    "hard_used": {k: hard.get(k, "NA") for k in HARD_DIMS},
+                    "prefs_used": {k: prefs.get(k, "NA") for k in PREF_DIMS},
                 }
             )
 
@@ -546,23 +589,37 @@ col_spacer, col_recs, col_run = st.columns([0.15, 1.2, 1.3], gap="large")
 
 # Column 2: Recommendations
 with col_recs:
-    st.subheader(f"Recommended ({min(top_k, len(recommended))} shown / {len(recommended)} total)")
+    #st.subheader(f"Recommended ({min(top_k, len(recommended))} shown / {len(recommended)} total)")
+    #st.subheader(f"({min(top_k, len(recommended))} tools match your request.")
+    st.subheader(f"👇 {min(top_k, len(recommended))} tools match your request")
+
+
+
+    # NEW: show what is being used as hard constraints vs preferences
+    with st.expander("🔎 Current selection (what filters vs what ranks)", expanded=False):
+        st.markdown("**✅ Hard constraints (filters):**")
+        st.json({k: hard.get(k, "NA") for k in HARD_DIMS}, expanded=False)
+        st.markdown("**⭐ Preferences (ranking only):**")
+        st.json({k: prefs.get(k, "NA") for k in PREF_DIMS}, expanded=False)
 
     for item in recommended[:top_k]:
         with st.container(border=True):
             st.markdown(f"### {item['name']}")
-            st.write(
-                f"**Score:** {item['score']:.2f}  |  "
-                f"**Why:** {', '.join(item['reasons']) if item['reasons'] else 'generic fit'}"
-            )
+
+            st.write(f"**Preference score:** {item['score']:.2f}")
+
+            # NEW: show matches/mismatches clearly
+            if item.get("matched"):
+                st.caption("✅ Matches preferences: " + ", ".join(item["matched"]))
+            if item.get("mismatched"):
+                st.caption("⚠️ Mismatches: " + "; ".join(item["mismatched"]))
 
             has_plugin = bool(item.get("plugin_id"))
             if st.button("Select", key=f"select_{item['name']}", disabled=not has_plugin):
-                # NEW: store full item so we can render the pretty card
                 st.session_state["selected_item"] = item
                 st.session_state["selected_method"] = item["name"]
                 st.session_state["selected_plugin_id"] = item.get("plugin_id")
-                st.session_state.pop("last_outputs", None)
+                st.session_state["last_outputs"] = None
 
 # Column 3: Selected method + Run + Result
 with col_run:
@@ -578,9 +635,28 @@ with col_run:
         if plugin is None:
             st.error(f"No runnable plugin registered for: {selected_plugin_id}")
         else:
-            # NEW: nice description card
             if selected_item:
                 render_selected_tool_card(selected_item)
+
+                # NEW: show explicit preference mismatch panel for selected tool
+                st.markdown("#### ✅/⚠️ Preference fit for this tool")
+                m1, m2 = st.columns(2, gap="large")
+                with m1:
+                    st.markdown("**✅ Matches**")
+                    if selected_item.get("matched"):
+                        for x in selected_item["matched"]:
+                            st.write(f"- {x}")
+                    else:
+                        st.caption("No preference matches.")
+
+                with m2:
+                    st.markdown("**⚠️ Mismatches**")
+                    if selected_item.get("mismatched"):
+                        for x in selected_item["mismatched"]:
+                            st.write(f"- {x}")
+                    else:
+                        st.caption("No preference mismatches.")
+
                 st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
 
             st.markdown(f"### {plugin.name}")
@@ -595,9 +671,9 @@ with col_run:
 
             outputs = st.session_state.get("last_outputs")
 
+            # ---- Your existing output rendering logic unchanged below ----
             if outputs and outputs.get("attributions"):
                 st.subheader("Result")
-
                 with st.expander("ℹ️ How to read this explanation", expanded=True):
                     st.write(
                         "- **Model**: a text classification model that assigns one label to your sentence.\n"
@@ -641,7 +717,6 @@ with col_run:
 
             elif outputs and outputs.get("plugin") == "bertviz_attention" and outputs.get("html"):
                 st.subheader("Result")
-
                 with st.expander("ℹ️ What you are seeing", expanded=True):
                     st.write(
                         "- Interactive attention visualization from BertViz.\n"
@@ -651,12 +726,10 @@ with col_run:
 
                 st.write(f"**Model:** {outputs.get('model', 'NA')}")
                 st.write(f"**View:** {outputs.get('view', 'NA')}")
-
                 components.html(outputs["html"], height=850, scrolling=True)
 
             elif outputs and outputs.get("plugin") == "alibi_anchors_text":
                 st.subheader("Result")
-
                 with st.expander("ℹ️ How to read Anchors", expanded=True):
                     st.write(
                         "- **Anchors** are IF-THEN style rules (a set of words/spans) that 'lock in' the model prediction locally.\n"
@@ -717,7 +790,6 @@ with col_run:
 
             elif outputs and outputs.get("plugin") == "logit_lens" and outputs.get("layers"):
                 st.subheader("Result")
-
                 with st.expander("ℹ️ How to read Logit Lens", expanded=True):
                     st.write(
                         "- **Logit lens** projects the hidden state at each layer into the vocabulary space.\n"
