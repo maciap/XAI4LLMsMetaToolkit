@@ -3,6 +3,9 @@
 
 import json
 import re
+import io
+import zipfile
+from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
 import streamlit as st
@@ -34,6 +37,7 @@ def get_plugins():
         plugin5.id: plugin5,
     }
 
+
 PLUGINS = get_plugins()
 
 # -------------------------
@@ -64,6 +68,168 @@ DEFAULTS = {
 # Hard vs preference dims (UI clarity + logic)
 HARD_DIMS = ["task", "access", "arch", "scope"]
 PREF_DIMS = ["granularity", "goal", "fidelity", "format"]
+
+
+# -------------------------
+# Download helpers (NEW)
+# -------------------------
+def _now_stamp() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def _to_json_bytes(obj: Any) -> bytes:
+    return json.dumps(obj, indent=2, ensure_ascii=False, default=str).encode("utf-8")
+
+
+def _fig_to_png_bytes(fig) -> bytes:
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=200)
+    buf.seek(0)
+    return buf.read()
+
+
+def _make_prefix(selected_item: Dict[str, Any] | None, plugin_name: str) -> str:
+    # short + stable filename prefix
+    method = (selected_item or {}).get("name") or plugin_name or "result"
+    method = re.sub(r"[^a-zA-Z0-9_\-]+", "_", method).strip("_")
+    return method or "result"
+
+
+def render_downloads(
+    outputs: Dict[str, Any],
+    selected_item: Dict[str, Any] | None = None,
+    figs: Dict[str, Any] | None = None,
+):
+    """
+    Shows an expander with download buttons:
+      - raw outputs JSON (always)
+      - plugin-specific CSV / HTML when present
+      - optional ZIP containing JSON + CSV/HTML + any figures as PNG
+    `figs`: mapping filename -> matplotlib figure
+    """
+    if not outputs:
+        return
+
+    plugin = outputs.get("plugin", "unknown")
+    stamp = _now_stamp()
+    prefix = _make_prefix(selected_item, plugin)
+
+    extra_files: Dict[str, bytes] = {}
+    # always include raw JSON in the ZIP
+    extra_files[f"{prefix}_{plugin}_{stamp}.json"] = _to_json_bytes(outputs)
+
+    with st.expander("⬇️ Download results", expanded=False):
+        # --- Raw JSON (always)
+        st.download_button(
+            "Download raw outputs (JSON)",
+            data=_to_json_bytes(outputs),
+            file_name=f"{prefix}_{plugin}_{stamp}.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+
+        # --- Captum attributions -> CSV
+        if outputs.get("attributions"):
+            df_attr = pd.DataFrame(outputs["attributions"])
+            csv_bytes = df_attr.to_csv(index=False).encode("utf-8")
+            fn = f"{prefix}_{plugin}_{stamp}_attributions.csv"
+            extra_files[fn] = csv_bytes
+
+            st.download_button(
+                "Download attributions (CSV)",
+                data=csv_bytes,
+                file_name=fn,
+                mime="text/csv",
+                use_container_width=True,
+            )
+
+        # --- DLA components -> CSV
+        if outputs.get("plugin") == "direct_logit_attribution" and outputs.get("components"):
+            df_comps = pd.DataFrame(outputs["components"])
+            csv_bytes = df_comps.to_csv(index=False).encode("utf-8")
+            fn = f"{prefix}_{plugin}_{stamp}_components.csv"
+            extra_files[fn] = csv_bytes
+
+            st.download_button(
+                "Download component contributions (CSV)",
+                data=csv_bytes,
+                file_name=fn,
+                mime="text/csv",
+                use_container_width=True,
+            )
+
+        # --- Logit lens layers -> flattened CSV
+        if outputs.get("plugin") == "logit_lens" and outputs.get("layers"):
+            rows = []
+            for layer_i, layer_obj in enumerate(outputs["layers"]):
+                for item in layer_obj.get("top", []):
+                    rows.append(
+                        {
+                            "layer": layer_i,
+                            "token": item.get("token"),
+                            "score": item.get("score"),
+                            "rank": item.get("rank"),
+                        }
+                    )
+            if rows:
+                df_ll = pd.DataFrame(rows)
+                csv_bytes = df_ll.to_csv(index=False).encode("utf-8")
+                fn = f"{prefix}_{plugin}_{stamp}_top_tokens.csv"
+                extra_files[fn] = csv_bytes
+
+                st.download_button(
+                    "Download logit-lens top tokens (CSV)",
+                    data=csv_bytes,
+                    file_name=fn,
+                    mime="text/csv",
+                    use_container_width=True,
+                )
+
+        # --- BertViz HTML
+        if outputs.get("plugin") == "bertviz_attention" and outputs.get("html"):
+            html_bytes = outputs["html"].encode("utf-8")
+            fn = f"{prefix}_{plugin}_{stamp}.html"
+            extra_files[fn] = html_bytes
+
+            st.download_button(
+                "Download attention visualization (HTML)",
+                data=html_bytes,
+                file_name=fn,
+                mime="text/html",
+                use_container_width=True,
+            )
+
+        # --- Figures -> PNG (also added to ZIP)
+        if figs:
+            for fname, fig in figs.items():
+                try:
+                    png = _fig_to_png_bytes(fig)
+                    extra_files[fname] = png
+                    st.download_button(
+                        f"Download plot: {fname}",
+                        data=png,
+                        file_name=fname,
+                        mime="image/png",
+                        use_container_width=True,
+                    )
+                except Exception:
+                    pass
+
+        # --- Everything ZIP
+        if extra_files:
+            zbuf = io.BytesIO()
+            with zipfile.ZipFile(zbuf, "w", zipfile.ZIP_DEFLATED) as z:
+                for fname, b in extra_files.items():
+                    z.writestr(fname, b)
+            zbuf.seek(0)
+
+            st.download_button(
+                "Download everything (ZIP)",
+                data=zbuf.read(),
+                file_name=f"{prefix}_{plugin}_{stamp}.zip",
+                mime="application/zip",
+                use_container_width=True,
+            )
 
 
 # -------------------------
@@ -155,7 +321,7 @@ def score(prefs: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str], Lis
         else:
             mismatched.append(f"🖥️ format mismatch (wants {prefs['format']}, has {fmts or 'NA'})")
 
-    # Fidelity (keep your “mixed gives partial credit” idea, but label it clearly)
+    # Fidelity
     if prefs["fidelity"] != "NA":
         f = m.get("fidelity", "NA")
         if f == prefs["fidelity"]:
@@ -557,7 +723,6 @@ else:
         for item in ranked:
             m = item["method"]
 
-            # Also compute the preference breakdown for transparency
             sc, matched, mismatched = score(prefs, m)
 
             recommended.append(
@@ -592,13 +757,8 @@ col_spacer, col_recs, col_run = st.columns([0.15, 1.2, 1.3], gap="large")
 
 # Column 2: Recommendations
 with col_recs:
-    #st.subheader(f"Recommended ({min(top_k, len(recommended))} shown / {len(recommended)} total)")
-    #st.subheader(f"({min(top_k, len(recommended))} tools match your request.")
     st.subheader(f"👇 {min(top_k, len(recommended))} tools match your request")
 
-
-
-    # NEW: show what is being used as hard constraints vs preferences
     with st.expander("🔎 Current selection (what filters vs what ranks)", expanded=False):
         st.markdown("**✅ Hard constraints (filters):**")
         st.json({k: hard.get(k, "NA") for k in HARD_DIMS}, expanded=False)
@@ -608,10 +768,8 @@ with col_recs:
     for item in recommended[:top_k]:
         with st.container(border=True):
             st.markdown(f"### {item['name']}")
-
             st.write(f"**Preference score:** {item['score']:.2f}")
 
-            # NEW: show matches/mismatches clearly
             if item.get("matched"):
                 st.caption("✅ Matches preferences: " + ", ".join(item["matched"]))
             if item.get("mismatched"):
@@ -641,7 +799,6 @@ with col_run:
             if selected_item:
                 render_selected_tool_card(selected_item)
 
-                # NEW: show explicit preference mismatch panel for selected tool
                 st.markdown("#### ✅/⚠️ Preference fit for this tool")
                 m1, m2 = st.columns(2, gap="large")
                 with m1:
@@ -674,7 +831,7 @@ with col_run:
 
             outputs = st.session_state.get("last_outputs")
 
-            # ---- Your existing output rendering logic unchanged below ----
+            # ---- Your existing output rendering logic + download hooks (NEW) ----
             if outputs and outputs.get("attributions"):
                 st.subheader("Result")
                 with st.expander("ℹ️ How to read this explanation", expanded=True):
@@ -718,6 +875,13 @@ with col_run:
                 plt.tight_layout()
                 st.pyplot(fig)
 
+                # ✅ Downloads (NEW)
+                render_downloads(
+                    outputs,
+                    selected_item=selected_item,
+                    figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_attribution_plot.png": fig},
+                )
+
             elif outputs and outputs.get("plugin") == "bertviz_attention" and outputs.get("html"):
                 st.subheader("Result")
                 with st.expander("ℹ️ What you are seeing", expanded=True):
@@ -730,6 +894,11 @@ with col_run:
                 st.write(f"**Model:** {outputs.get('model', 'NA')}")
                 st.write(f"**View:** {outputs.get('view', 'NA')}")
                 components.html(outputs["html"], height=850, scrolling=True)
+
+                # ✅ Downloads (NEW)
+                render_downloads(outputs, selected_item=selected_item)
+
+            
 
             elif outputs and outputs.get("plugin") == "alibi_anchors_text":
                 st.subheader("Result")
@@ -745,15 +914,24 @@ with col_run:
                 pred = outputs.get("predicted", {})
                 st.write(f"**Prediction:** {pred.get('label', pred.get('idx', 'NA'))}")
 
+                # ---- Anchor rule ----
                 anchor = outputs.get("anchor", None)
-                if anchor is None:
-                    st.warning("No anchor found (try loosening the threshold / increasing samples).")
+
+                is_empty_anchor = (
+                    anchor is None
+                    or (isinstance(anchor, str) and anchor.strip() == "")
+                    or (isinstance(anchor, (list, tuple)) and len(anchor) == 0)
+                )
+
+                if is_empty_anchor:
+                    st.warning("No anchor found (try lowering threshold / increasing coverage_samples / increasing beam_size).")
                 else:
                     if isinstance(anchor, list):
                         st.markdown("**Anchor (rule):** " + " ∧ ".join([f"`{a}`" for a in anchor]))
                     else:
                         st.markdown(f"**Anchor (rule):** `{anchor}`")
 
+                # ---- Metrics ----
                 precision = outputs.get("precision", None)
                 coverage = outputs.get("coverage", None)
 
@@ -763,19 +941,15 @@ with col_run:
                 with c2:
                     st.metric("Coverage", f"{coverage:.3f}" if isinstance(coverage, (int, float)) else "NA")
 
-                params = outputs.get("params", None)
-                if params:
-                    st.caption("Parameters")
-                    st.json(params, expanded=False)
-
-                examples = outputs.get("examples", {})
-                if isinstance(examples, dict) and examples:
+                # ---- Examples (UPDATED KEYS) ----
+                examples = outputs.get("examples", {}) or {}
+                if isinstance(examples, dict) and (examples.get("covered_true") or examples.get("covered_false")):
                     st.markdown("### Examples")
                     ex_cols = st.columns(2)
 
                     with ex_cols[0]:
-                        st.markdown("**Where the anchor holds**")
-                        ok_ex = examples.get("covered") or examples.get("covered_examples") or []
+                        st.markdown("**Where the anchor holds (covered_true)**")
+                        ok_ex = examples.get("covered_true", []) or []
                         if ok_ex:
                             for i, ex in enumerate(ok_ex[:10]):
                                 st.write(f"{i+1}. {ex}")
@@ -783,13 +957,26 @@ with col_run:
                             st.caption("No examples provided.")
 
                     with ex_cols[1]:
-                        st.markdown("**Where it fails / counterexamples**")
-                        bad_ex = examples.get("counterexamples") or examples.get("uncovered") or []
+                        st.markdown("**Where it flips (covered_false)**")
+                        bad_ex = examples.get("covered_false", []) or []
                         if bad_ex:
                             for i, ex in enumerate(bad_ex[:10]):
                                 st.write(f"{i+1}. {ex}")
                         else:
                             st.caption("No counterexamples provided.")
+                else:
+                    st.caption("No example texts returned by the explainer (try increasing n_covered_ex).")
+
+                # ---- Params ----
+                params = outputs.get("params", None)
+                if params:
+                    with st.expander("Parameters", expanded=False):
+                        st.json(params, expanded=False)
+
+                # ✅ Downloads
+                render_downloads(outputs, selected_item=selected_item)
+
+
 
 
             elif outputs and outputs.get("plugin") == "logit_lens" and outputs.get("layers"):
@@ -837,6 +1024,10 @@ with col_run:
                 tracked = outputs.get("tracked_token")
                 tracked_probs = outputs.get("tracked_probs")
 
+                figs = {
+                    f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_layer_{layer_idx}_top_tokens.png": fig
+                }
+
                 if tracked and tracked_probs:
                     st.markdown("### Consistency across layers (tracked token)")
                     st.write(
@@ -851,8 +1042,10 @@ with col_run:
                     plt.tight_layout()
                     st.pyplot(fig2)
 
-            
+                    figs[f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_tracked_token_across_layers.png"] = fig2
 
+                # ✅ Downloads (NEW)
+                render_downloads(outputs, selected_item=selected_item, figs=figs)
 
             elif outputs and outputs.get("plugin") == "direct_logit_attribution" and outputs.get("components"):
                 st.subheader("Result")
@@ -868,7 +1061,6 @@ with col_run:
                 st.write(f"**Architecture detected:** {outputs.get('arch_detected', 'NA')}")
                 st.write(f"**Text length (tokens):** {len(outputs.get('tokens', []))}")
                 st.write(f"**Position inspected:** {outputs.get('position', 'NA')} (0-based index)")
-                
 
                 pred = outputs.get("predicted_next", {})
                 tgt = outputs.get("target", {})
@@ -885,7 +1077,6 @@ with col_run:
                 comps = outputs["components"]
                 df = pd.DataFrame(comps)
 
-                # Optional UI controls
                 sort_mode = st.selectbox("Sort components by", ["abs_contribution (desc)", "contribution (desc)", "layer (asc)"])
                 if sort_mode == "contribution (desc)":
                     df = df.sort_values("contribution", ascending=False)
@@ -897,7 +1088,6 @@ with col_run:
                 st.markdown(f"### Top-{outputs.get('top_n', len(df))} component contributions")
                 st.dataframe(df, use_container_width=True)
 
-                # Bar plot of contributions
                 fig = plt.figure()
                 plt.bar(range(len(df)), df["contribution"].tolist())
                 plt.xticks(range(len(df)), df["component"].tolist(), rotation=60, ha="right")
@@ -906,12 +1096,15 @@ with col_run:
                 plt.tight_layout()
                 st.pyplot(fig)
 
-                # Notes
                 notes = outputs.get("notes", [])
                 if notes:
                     with st.expander("Notes / caveats", expanded=False):
                         for n in notes:
                             st.write(f"- {n}")
 
-                            
-
+                # ✅ Downloads (NEW)
+                render_downloads(
+                    outputs,
+                    selected_item=selected_item,
+                    figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_dla_components.png": fig},
+                )

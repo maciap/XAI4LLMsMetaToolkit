@@ -865,7 +865,7 @@
     "notes": "Generic Captum attribution for HF sequence classifiers (IG/Saliency/DeepLift)."
    }, 
    {
-  "name": "Logit Lens (HF-native)",
+  "name": "Logit Lens",
   "plugin_id": "logit_lens",
   "task_input": ["generation", "seq2seq", "general_NLP", "NA"],
   "access_arch": {
@@ -1005,24 +1005,75 @@
     "HF-native version typically attributes per-layer attention-module outputs and per-layer MLP-module outputs; per-head attribution requires deeper, architecture-specific hooks.",
     "For manual target tokens, require that the provided string maps to exactly one token id (or accept token id directly) to avoid ambiguity."
   ]
-},
+}, 
 {
-  "name": "Alibi Anchors (AnchorsText)",
+  "name": "Anchors",
   "plugin_id": "alibi_anchors_text",
-  "task_input": ["classification", "general_NLP", "NA"],
+  "task_input": ["classification"],
   "access_arch": {
-    "access": ["black_box", "mixed"],
-    "arch": ["transformer_general", "non_llm", "NA"]
+    "access": ["black_box"],
+    "arch": ["transformer_general"]
   },
-  "target_scope": "local",
-  "granularity": ["token", "span", "rules", "NA"],
-  "user_goal_audience": ["end_user_explain", "research_debug", "model_eval"],
-  "fidelity": "high",
-  "format": ["rules", "ranked_examples", "API_only", "visual_UI", "NA"],
-  "notes": "Anchors for text: local high-precision IF-THEN rules for black-box classifiers. Returns anchor tokens/spans plus estimated precision and coverage; can include examples where the anchor holds/fails. Key knobs: threshold, coverage_samples, beam_size, batch_size."
+  "description": {
+    "overview": "AnchorText is a local, model-agnostic explanation method that identifies a small set of words (an anchor) in a text such that, if those words are present, the model’s prediction is highly likely to remain the same. Rather than assigning numeric importance scores like SHAP, it produces IF-THEN style rules — showing combinations of features that reliably “anchor” a prediction under perturbations of the input.",
+    "main_functionalities": [
+      "Retrieves a set of words (‘anchor’) in text that ‘locks in’ the model’s prediction locally",
+      "Provides quantitative metrics — precision (reliability) and coverage (scope) — for the retrieved set of words",
+      "Works with any classifier without requiring access to model internals",
+      "Returns example texts where the anchor holds and where it fails for qualitative inspection"
+    ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Anchors: High-Precision Model-Agnostic Explanations",
+      "type": "paper",
+      "year": 2018,
+      "source": "AAAI",
+      "url": "https://homes.cs.washington.edu/~marcotcr/aaai18.pdf",
+      "note": "Original paper introducing the Anchors algorithm for model-agnostic explanations using high-precision local rules. Shows user studies where anchors allow users to predict model behavior with less effort than other explainers. :contentReference[oaicite:0]{index=0}"
+    },
+    {
+      "used_in": "A Sea of Words: An In-Depth Analysis of Anchors for Text Data",
+      "type": "paper",
+      "year": 2022,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2205.13789",
+      "note": "Analyzes the theoretical properties of Anchors specifically for text classifiers, showing how small sets of words can explain model decisions under different conditions. :contentReference[oaicite:1]{index=1}"
+    },
+    {
+      "used_in": "Understanding Post-hoc Explainers: The Case of Anchors",
+      "type": "paper",
+      "year": 2023,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2303.08806",
+      "note": "Provides theoretical and empirical analysis of the Anchors explainer and discusses strengths and limitations of the approach. :contentReference[oaicite:2]{index=2}"
+    },
+    {
+      "used_in": "Alibi Explain: Algorithms for Explaining ML Models",
+      "type": "paper",
+      "year": 2021,
+      "source": "JMLR Library",
+      "url": "https://jmlr.csail.mit.edu/papers/volume22/21-0017/21-0017.pdf",
+      "note": "Describes the Alibi library that implements AnchorText among other explainability methods for text, tabular, and image data. :contentReference[oaicite:3]{index=3}"
+    }
+  ],
+  "strengths": [
+    "Produces intuitive IF-THEN style explanations that are easy for humans to understand and communicate",
+    "Model-agnostic: works with black-box classifiers without needing gradients or internal architecture specifics",
+    "Quantifies reliability (precision) and breadth (coverage) of the explanation rule",
+    "Returns concrete example texts where the anchor holds and where it fails, aiding debugging and trust assessment"
+  ],
+  "limitations": [
+    "Focused on local explanations: does not provide a global summary of model behavior",
+    "Can be computationally heavy for long texts or strict precision thresholds due to sampling perturbations",
+      "Explanation quality depends on the perturbation strategy used to generate local text variants; heuristic replacements (e.g., the use of the UNK token) can produce unnatural or context-less sentences",   
+    "Explainer may return trivial anchors or none if the model behavior is diffuse (words are weakly predictive)"
+  ]
 }
   ]
 }
+
+
 
 
 

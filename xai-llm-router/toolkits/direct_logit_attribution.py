@@ -93,7 +93,7 @@ def _infer_arch_and_layers(model) -> Tuple[str, List[torch.nn.Module]]:
 
 class DirectLogitAttribution(ToolkitPlugin):
     """
-    HF-native Direct Logit Attribution (DLA) for causal LMs.
+    Direct Logit Attribution (DLA) for causal LMs.
 
     For a chosen token position and target token, compute per-component contributions
     to the target logit via dot(component_output, W_U[:, target_id]).
@@ -105,7 +105,7 @@ class DirectLogitAttribution(ToolkitPlugin):
     """
 
     id = "direct_logit_attribution"
-    name = "Direct Logit Attribution (HF-native) — component contributions to a target logit"
+    name = "Direct Logit Attribution — component contributions to a target logit"
 
     def __init__(self, device: Optional[str] = None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
