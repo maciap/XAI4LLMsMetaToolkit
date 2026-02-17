@@ -13,8 +13,10 @@
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt (requirements_full.txt actually contains all the libraries Martino uses) 
 ```
+
+
 
 * Run:
 
@@ -22,11 +24,19 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+In Windows, Martino runs: 
+```bash
+.venv\Scripts\Activate.ps1
+python -m streamlit run Navigator.py
+```
+
+
 #### Currently supported plugins 
 * Attribution (Captum)
 * Logit lens (mechanistic interpretability)
+* Direct Logit Attribution (mechanistic interpretability)
 * BertViz (visualization of attention patterns)
-* Anchors (Alibi) - to revise 
+* Anchors (Alibi)
 
 
 #### TODO 
