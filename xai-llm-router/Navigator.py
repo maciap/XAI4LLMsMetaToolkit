@@ -20,9 +20,7 @@ from toolkits.bertviz_attention import BertVizAttention
 from toolkits.logit_lens import LogitLens
 from toolkits.alibi_anchors_text import AlibiAnchorsText
 from toolkits.direct_logit_attribution import DirectLogitAttribution
-from toolkits.sae_feature_explorer import SAEFeatureExplorer
-import torch  # safe local import for cuda check
-import streamlit.components.v1 as components
+
 
 @st.cache_resource
 def get_plugins():
@@ -31,7 +29,6 @@ def get_plugins():
     plugin3 = LogitLens()
     plugin4 = AlibiAnchorsText()
     plugin5 = DirectLogitAttribution()
-    plugin6 = SAEFeatureExplorer()
 
     return {
         plugin1.id: plugin1,
@@ -39,7 +36,6 @@ def get_plugins():
         plugin3.id: plugin3,
         plugin4.id: plugin4,
         plugin5.id: plugin5,
-        plugin6.id: plugin6,
     }
 
 
@@ -421,21 +417,16 @@ def render_plugin_form(plugin):
 
         # --- NUMBER ---
         elif f.type == "number":
-            # 1) plugin default overrides everything
-            if f.key in default_map:
-                default = float(default_map[f.key])
-            # 2) otherwise keep your existing heuristics
+            if f.key == "n_steps":
+                default = 50
+            elif f.key == "max_length":
+                default = 128
+            elif f.key == "top_k":
+                default = 10
+            elif f.key == "position_index":
+                default = -1
             else:
-                if f.key == "n_steps":
-                    default = 50
-                elif f.key == "max_length":
-                    default = 128
-                elif f.key == "top_k":
-                    default = 10
-                elif f.key == "position_index":
-                    default = -1
-                else:
-                    default = 0
+                default = 0
 
                 if f.key in ANCHOR_DEFAULTS:
                     default = ANCHOR_DEFAULTS[f.key]
@@ -621,7 +612,7 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
 # -------------------------
 # Streamlit UI
 # -------------------------
-st.set_page_config(page_title="XAI Router for LLMs", layout="wide")
+st.set_page_config(page_title="XAI Navigator for LLMs", layout="wide")
 
 st.markdown(
     """
@@ -1197,98 +1188,3 @@ with col_run:
                     selected_item=selected_item,
                     figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_dla_components.png": fig},
                 )
-
-
-
-            elif outputs and outputs.get("plugin") == "sae_feature_explorer":
-                st.subheader("Result")
-
-
-                with st.expander("ℹ️ How to read Sparse Autoencoders (SAELens + Neuronpedia)", expanded=True):
-                    st.write(
-                        "- A **Sparse Autoencoder (SAE)** learns a set of directions (called **features**) in a model’s hidden activations.\n"
-                        "- For each token position, the SAE **encodes** the model activation into a sparse vector of **feature activations**.\n"
-                        "- Each row in **Top activating SAE features** is:\n"
-                        "  - **feature_id**: the index of a learned feature (a latent direction)\n"
-                        "  - **activation**: how strongly that feature is present at the selected token position\n\n"
-                        "**Interpretation tips:**\n"
-                        "- Higher **activation** ⇒ the feature is more strongly present for that token at this layer/hook.\n"
-                        "- Features are **not labels** by default. To understand a feature, you usually inspect:\n"
-                        "  1) which tokens/contexts make it fire (top examples), and\n"
-                        "  2) which tokens in *your input* activate it.\n"
-                        "- A single feature can sometimes be **polysemantic** (fires on multiple unrelated patterns), "
-                        "especially if the SAE is small or sparsity is weak.\n\n"
-                        "**What 'Position' means:**\n"
-                        "- The position is a **token index** (0-based). `-1` means the **last token**.\n"
-                        "- The activations shown are computed at the SAE’s hook point (e.g. `blocks.6.hook_resid_pre`).\n\n"
-                        "**Per-token view (if enabled):**\n"
-                        "- Shows the top features for *each* token position (useful for seeing where features fire across the sentence).\n\n"
-                        "- We also embed **Neuronpedia dashboards** for selected features. These dashboards show corpus-level information (such as top activating examples, explanations, and activation statistics) which helps attach semantic meaning to a feature beyond this single input."
-                    )
-
-                st.write(f"**Model:** {outputs.get('model')}")
-                st.write(f"**SAE:** {outputs.get('release')} / {outputs.get('sae_id')}")
-                st.write(f"**Position:** {outputs.get('position')}")
-
-                toks = outputs.get("tokens", [])
-                pos = outputs.get("position", 0)
-
-                if isinstance(toks, str):
-                    toks = [toks]  # prevent char-by-char enumerate
-
-                if toks:
-                    st.caption("Tokenization (index:token)")
-                    st.code(" ".join([f"{i}:{t}" for i, t in enumerate(toks)]))
-
-                    # nice: highlight selected position
-                    if isinstance(pos, int) and 0 <= pos < len(toks):
-                        st.caption("Selected token position")
-                        st.markdown(" ".join([f"**[{t}]**" if i == pos else t for i, t in enumerate(toks)]))
-
-                st.markdown("### Top activating SAE features at this position")
-                df = pd.DataFrame(outputs.get("top_features", []))
-                st.dataframe(df, use_container_width=True)
-
-                # Optional: bar plot
-                figs = None
-                if not df.empty and "activation" in df.columns and "feature_id" in df.columns:
-                    fig = plt.figure()
-                    plt.bar(range(len(df)), df["activation"].tolist())
-                    plt.xticks(range(len(df)), df["feature_id"].astype(str).tolist(), rotation=45, ha="right")
-                    plt.ylabel("SAE feature activation")
-                    plt.title("Top SAE features at selected token position")
-                    plt.tight_layout()
-                    st.pyplot(fig)
-                    figs = {f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_top_features.png": fig}
-
-                if outputs.get("per_token"):
-                    st.markdown("### Per-token top features (k=5)")
-                    st.json(outputs.get("per_token_top", [])[:20])
-
-                # Downloads before embeds (embeds aren't downloadable anyway)
-                render_downloads(outputs, selected_item=selected_item, figs=figs)
-
-                # --- Neuronpedia integration (Level 1) -
-                # 
-                # --
-                print("neuronpedia") 
-                np = outputs.get("neuronpedia", {}) or {}
-                if np.get("enabled") and np.get("feature_urls"):
-                    with st.expander("🧠 Neuronpedia feature dashboards", expanded=False):
-                        st.caption(
-                            "These dashboards are hosted on Neuronpedia and help interpret SAE features "
-                            "(example contexts, explanations, and activation tests)."
-                        )
-
-                        max_n = min(10, len(np["feature_urls"]))
-                        slider_key = f"np_show_n__{outputs.get('sae_id','na')}__pos{pos}"
-                        show_n = st.slider("How many dashboards to embed", 1, max_n, min(3, max_n), key=slider_key)
-
-                        for item in np["feature_urls"][:show_n]:
-                            fid = item["feature_id"]
-                            url = item["url"]
-                            st.markdown(f"#### Feature {fid}")
-                            components.iframe(url, height=560, scrolling=True)
-                else:
-                    st.caption("Neuronpedia dashboards not available for this SAE release / id.")
-
