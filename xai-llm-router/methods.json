@@ -1069,6 +1069,86 @@
       "Explanation quality depends on the perturbation strategy used to generate local text variants; heuristic replacements (e.g., the use of the UNK token) can produce unnatural or context-less sentences",   
     "Explainer may return trivial anchors or none if the model behavior is diffuse (words are weakly predictive)"
   ]
+},
+{
+  "name": "Sparse Autoencoders (SAELens + Neuronpedia)",
+  "plugin_id": "sae_feature_explorer",
+  "task_input": ["generation", "seq2seq", "general_NLP"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder", "encdec", "transformer_general"]
+  },
+  "target_scope": "both",
+  "description": {
+    "overview": "Sparse Autoencoders (SAEs) are used to discover interpretable features inside transformer latent representations. According to the superposition hypothesis, neural networks can represent more features than they have dimensions by encoding them sparsely, at the cost of interpretability. SAEs attempt to reverse this superposition by learning a new sparse basis of higher dimension over neuron activations, where each latent dimension ideally corresponds to a more monosemantic concept. ",
+    "main_functionalities": [
+    "Learn a sparse, overcomplete dictionary of latent features that reconstruct neural activations",
+    "Enable inspection of feature activations at specific token positions or contexts",
+    "Support downstream interpretability workflows such as feature visualization, steering, ablation, and attribution"
+  ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning",
+      "type": "paper",
+      "year": 2023,
+      "source": "Anthropic",
+      "url": "https://arxiv.org/abs/2306.09194",
+      "note": "Introduces large-scale sparse autoencoders for discovering monosemantic features in transformer activations."
+    },
+    {
+      "used_in": "Toy Models of Superposition",
+      "type": "paper",
+      "year": 2022,
+      "source": "Transformer Circuits",
+      "url": "https://transformer-circuits.pub/2022/toy_model/index.html",
+      "note": "Explains the superposition hypothesis and why sparse feature discovery is needed."
+    },
+    {
+      "used_in": "Scaling and Evaluating Sparse Autoencoders",
+      "type": "paper",
+      "year": 2024,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2406.04093",
+      "note": "Introduces top-k sparse autoencoders and analyzes scaling behavior and dead latents."
+    },
+    {
+      "used_in": "Improving Dictionary Learning with Gated Sparse Autoencoders",
+      "type": "paper",
+      "year": 2024,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2404.16014",
+      "note": "Proposes gated autoencoders that separate feature selection from feature magnitude to mitigate shrinkage bias."
+    },
+    {
+      "used_in": "Jumping Ahead: Improving Reconstruction Fidelity with JumpReLU Sparse Autoencoders",
+      "type": "paper",
+      "year": 2024,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2407.14435",
+      "note": "Introduces JumpReLU SAEs trained directly on an L0 objective using straight-through estimation."
+    },
+    {
+      "used_in": "SAELens",
+      "type": "documentation",
+      "year": 2024,
+      "source": "decoderesearch.github.io",
+      "url": "https://decoderesearch.github.io/SAELens/",
+      "note": "Library for loading and analyzing pretrained sparse autoencoders on TransformerLens models."
+    }
+  ],
+  "strengths": [
+    "Unsupervised feature discovery: does not require predefined concepts or labels",
+    "Often produces more monosemantic directions than raw neurons",
+    "Can be integreated in any model and in any layer",
+    "Enables advanced interventions (steering, ablation, attribution) using the discovered features"
+  ],
+  "limitations": [
+    "Feature meaning is not automatic: interpretation typically requires inspecting top-activating examples",
+    "There is no guarantee that features will be monosemantic. Features can still be polysemantic, especially in small or weakly sparse SAEs",
+    "Reconstruction–sparsity trade-off: stronger sparsity improves interpretability but may hurt reconstruction quality",
+    "Global analysis of a model requires large-scale activation datasets"
+  ]
 }
   ]
 }
