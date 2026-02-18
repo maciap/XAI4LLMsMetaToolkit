@@ -26,3 +26,5 @@ lazy_loader
 # scikit-image pin for Python 3.13
 # -----------------------
 scikit-image==0.26.0
+
+inseq==0.7.0

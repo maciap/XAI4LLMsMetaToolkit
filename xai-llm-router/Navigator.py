@@ -19,6 +19,11 @@ from toolkits.bertviz_attention import BertVizAttention
 from toolkits.logit_lens import LogitLens
 from toolkits.alibi_anchors_text import AlibiAnchorsText
 from toolkits.direct_logit_attribution import DirectLogitAttribution
+from toolkits.inseq import InseqDecoderIG, InseqEncDecIG
+
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+print(os.getcwd())
 
 
 @st.cache_resource
@@ -28,6 +33,8 @@ def get_plugins():
     plugin3 = LogitLens()
     plugin4 = AlibiAnchorsText()
     plugin5 = DirectLogitAttribution()
+    plugin6 = InseqDecoderIG()
+    plugin7 = InseqEncDecIG()
 
     return {
         plugin1.id: plugin1,
@@ -35,6 +42,8 @@ def get_plugins():
         plugin3.id: plugin3,
         plugin4.id: plugin4,
         plugin5.id: plugin5,
+        plugin6.id: plugin6,
+        plugin7.id: plugin7,
     }
 
 
@@ -361,7 +370,9 @@ def render_plugin_form(plugin):
         elif f.type == "select":
             vals[f.key] = st.selectbox(f.label, f.options or [], help=getattr(f, "help", ""))
         elif f.type == "number":
-            if f.key == "n_steps":
+            if f.default:
+                default = f.default
+            elif f.key == "n_steps":
                 default = 50
             elif f.key == "max_length":
                 default = 128
@@ -535,7 +546,7 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
 # -------------------------
 # Streamlit UI
 # -------------------------
-st.set_page_config(page_title="XAI Router for LLMs", layout="wide")
+st.set_page_config(page_title="XAI Navigator for LLMs", layout="wide")
 
 st.markdown(
     """
@@ -1108,3 +1119,18 @@ with col_run:
                     selected_item=selected_item,
                     figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_dla_components.png": fig},
                 )
+            elif outputs and outputs.get("plugin") == "inseq_decoder_ig" and outputs.get("out"):
+                st.subheader("Result")
+                with st.expander("ℹ️ Integrated Gradients for Decoder-Only Models with Inseq", expanded=True):
+                    st.write(
+                        "- **Inseq** generates feature attributions for a generated sequence.\n"
+                    )
+                    components.html(outputs["out"], height=600, scrolling=True)
+            
+            elif outputs and outputs.get("plugin") == "inseq_encdec_ig" and outputs.get("out"):
+                st.subheader("Result")
+                with st.expander("ℹ️ Integrated Gradients for Encoder-Decoder Models with Inseq", expanded=True):
+                    st.write(
+                        "- **Inseq** generates feature attributions for a generated sequence.\n"
+                    )
+                    components.html(outputs["out"], height=600, scrolling=True)
