@@ -13,13 +13,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit.components.v1 as components
 
-
 from text_to_score import rank_methods
 from toolkits.captum_classifier import CaptumClassifierAttribution
 from toolkits.bertviz_attention import BertVizAttention
 from toolkits.logit_lens import LogitLens
 from toolkits.alibi_anchors_text import AlibiAnchorsText
 from toolkits.direct_logit_attribution import DirectLogitAttribution
+from toolkits.inseq import InseqDecoderIG, InseqEncDecIG
+
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+print(os.getcwd())
 
 
 @st.cache_resource
@@ -29,6 +33,8 @@ def get_plugins():
     plugin3 = LogitLens()
     plugin4 = AlibiAnchorsText()
     plugin5 = DirectLogitAttribution()
+    plugin6 = InseqDecoderIG()
+    plugin7 = InseqEncDecIG()
 
     return {
         plugin1.id: plugin1,
@@ -36,6 +42,8 @@ def get_plugins():
         plugin3.id: plugin3,
         plugin4.id: plugin4,
         plugin5.id: plugin5,
+        plugin6.id: plugin6,
+        plugin7.id: plugin7,
     }
 
 
@@ -338,11 +346,7 @@ def score(prefs: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str], Lis
     return s, matched, mismatched
 
 
-
-
 def render_plugin_form(plugin):
-    
-
     vals = {}
 
     ANCHOR_DEFAULTS = {
@@ -358,66 +362,17 @@ def render_plugin_form(plugin):
         "max_length": 256,
     }
 
-    # Plugin-specific defaults (extend as you add more plugins)
-    SAE_DEFAULTS = {
-        "model_name": "gpt2-small",
-        "release": "gpt2-small-res-jb",
-        "sae_id": "blocks.6.hook_resid_pre",
-        "dtype": "float32",  # safest on CPU
-        "device": "cuda" if torch.cuda.is_available() else "cpu",
-        "text": "The capital of France is",
-        "position_index": -1,
-        "top_k": 10,
-        "per_token": False,
-    }
-
-    plugin_id = getattr(plugin, "id", "")
-    default_map = SAE_DEFAULTS if plugin_id == "sae_feature_explorer" else {}
-
-    # ✅ FIX: stable, unique widget keys (prevents Streamlit “sticking” across reruns/tools)
-    def _k(field_key: str) -> str:
-        return f"{plugin_id}__{field_key}"
-
     for f in plugin.spec():
-        # --- TEXTAREA ---
         if f.type == "textarea":
-            vals[f.key] = st.text_area(
-                f.label,
-                value=str(default_map.get(f.key, "")),
-                help=getattr(f, "help", ""),
-                key=_k(f.key),
-            )
-
-        # --- TEXT ---
+            vals[f.key] = st.text_area(f.label, help=getattr(f, "help", ""))
         elif f.type == "text":
-            vals[f.key] = st.text_input(
-                f.label,
-                value=str(default_map.get(f.key, "")),
-                help=getattr(f, "help", ""),
-                key=_k(f.key),
-            )
-
-        # --- SELECT ---
+            vals[f.key] = st.text_input(f.label, help=getattr(f, "help", ""))
         elif f.type == "select":
-            options = f.options or []
-            default_val = default_map.get(f.key, options[0] if options else "")
-
-            # Choose default index safely
-            index = 0
-            if options and default_val in options:
-                index = options.index(default_val)
-
-            vals[f.key] = st.selectbox(
-                f.label,
-                options,
-                index=index,
-                help=getattr(f, "help", ""),
-                key=_k(f.key),
-            )
-
-        # --- NUMBER ---
+            vals[f.key] = st.selectbox(f.label, f.options or [], help=getattr(f, "help", ""))
         elif f.type == "number":
-            if f.key == "n_steps":
+            if f.default:
+                default = f.default
+            elif f.key == "n_steps":
                 default = 50
             elif f.key == "max_length":
                 default = 128
@@ -428,8 +383,8 @@ def render_plugin_form(plugin):
             else:
                 default = 0
 
-                if f.key in ANCHOR_DEFAULTS:
-                    default = ANCHOR_DEFAULTS[f.key]
+            if f.key in ANCHOR_DEFAULTS:
+                default = ANCHOR_DEFAULTS[f.key]
 
             step = 1.0
             if f.key in ("threshold", "delta", "tau"):
@@ -440,34 +395,13 @@ def render_plugin_form(plugin):
                 value=float(default),
                 step=float(step),
                 help=getattr(f, "help", ""),
-                key=_k(f.key),
             )
-
-        # --- CHECKBOX ---
         elif f.type == "checkbox":
-            vals[f.key] = st.checkbox(
-                f.label,
-                value=bool(default_map.get(f.key, False)),
-                help=getattr(f, "help", ""),
-                key=_k(f.key),
-            )
-
+            vals[f.key] = st.checkbox(f.label, help=getattr(f, "help", ""))
         else:
             st.warning(f"Unknown field type: {f.type} (field {f.key})")
 
     return vals
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # -------------------------
@@ -582,7 +516,7 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
                     st.caption("—")
 
         if apps:
-            with st.expander("📚 Further Reading", expanded=False):
+            with st.expander("📚 Research applications (where it’s used)", expanded=False):
                 for a in apps:
                     title = a.get("used_in", "Untitled")
                     year = a.get("year", "")
@@ -605,8 +539,8 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
 
                     st.markdown("---")
         else:
-            with st.expander("📚 Further Reading", expanded=False):
-                st.caption("No further reading for this method.")
+            with st.expander("📚 Research applications (where it’s used)", expanded=False):
+                st.caption("No research applications listed for this tool yet.")
 
 
 # -------------------------
@@ -1124,9 +1058,6 @@ with col_run:
                 # ✅ Downloads (NEW)
                 render_downloads(outputs, selected_item=selected_item, figs=figs)
 
-            
-            
-                
             elif outputs and outputs.get("plugin") == "direct_logit_attribution" and outputs.get("components"):
                 st.subheader("Result")
                 with st.expander("ℹ️ How to read Direct Logit Attribution (DLA)", expanded=True):
@@ -1188,3 +1119,18 @@ with col_run:
                     selected_item=selected_item,
                     figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_dla_components.png": fig},
                 )
+            elif outputs and outputs.get("plugin") == "inseq_decoder_ig" and outputs.get("out"):
+                st.subheader("Result")
+                with st.expander("ℹ️ Integrated Gradients for Decoder-Only Models with Inseq", expanded=True):
+                    st.write(
+                        "- **Inseq** generates feature attributions for a generated sequence.\n"
+                    )
+                    components.html(outputs["out"], height=600, scrolling=True)
+            
+            elif outputs and outputs.get("plugin") == "inseq_encdec_ig" and outputs.get("out"):
+                st.subheader("Result")
+                with st.expander("ℹ️ Integrated Gradients for Encoder-Decoder Models with Inseq", expanded=True):
+                    st.write(
+                        "- **Inseq** generates feature attributions for a generated sequence.\n"
+                    )
+                    components.html(outputs["out"], height=600, scrolling=True)
