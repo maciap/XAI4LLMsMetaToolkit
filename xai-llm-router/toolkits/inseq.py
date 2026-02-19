@@ -31,7 +31,7 @@ class ToolkitPlugin:
     
 class InseqDecoderIG(ToolkitPlugin):
     id = "inseq_decoder_ig"
-    name = "Integrated Gradients (Inseq)"
+    name = "Integrated Gradients Decoder (Inseq)"
 
     def __init__(self, device: Optional[str] = None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -108,7 +108,7 @@ class InseqDecoderIG(ToolkitPlugin):
     
 class InseqEncDecIG(ToolkitPlugin):
     id = "inseq_encdec_ig"
-    name = "Integrated Gradients (Inseq)"
+    name = "Integrated Gradients EncoderDecoder (Inseq)"
 
     def __init__(self, device: Optional[str] = None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")

@@ -380,7 +380,7 @@
       "notes": "Extends attribution to text generation; prompt token → generated token impact via perturbation- and gradient-based approaches; includes visualization utilities."
     },
     {
-      "name": "Integrated Gradients (Inseq)",
+      "name": "Integrated Gradients - Decoder Only (Inseq)",
       "plugin_id": "inseq_decoder_ig",
       "task_input": [
         "generation"
@@ -409,7 +409,7 @@
       "notes": "Builds on Captum for attribution in generation; target sequence or generated sequence; includes discretized IG and attention-based attribution."
     },
     {
-      "name": "Integrated Gradients (Inseq)",
+      "name": "Integrated Gradients - EncoderDecoder (Inseq)",
       "plugin_id": "inseq_encdec_ig",
       "task_input": [
         "seq2seq"

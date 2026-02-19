@@ -13,22 +13,27 @@
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt (requirements_full.txt actually contains all the libraries Martino uses) 
+pip install -r requirements_new.txt (requirements_new.txt actually contains all the libraries Martino uses) 
+```
+
+and 
+
+```bash
+pip install -r xai-inseq-requirements.txt (for inseq envioronment) 
 ```
 
 
-
 * Run:
-
 ```python
 streamlit run app.py
 ```
 
-In Windows, Martino runs: 
+In Windows (power shell), to the app, Martino runs: 
 ```bash
-.venv\Scripts\Activate.ps1
-python -m streamlit run Navigator.py
+.\run_all.ps1
 ```
+And we need two envioronments to handle conflicting dependenices. Martino uses a conda envioronment with "xai-inseq-requirements.txt" and a virtual envioronment with "requirements_new.txt". 
+
 
 
 #### Currently supported plugins 
@@ -37,6 +42,10 @@ python -m streamlit run Navigator.py
 * Direct Logit Attribution (mechanistic interpretability)
 * BertViz (visualization of attention patterns)
 * Anchors (Alibi)
+* Sparse Autoencoders (The coolest)
+* Integrated Gradients for Text Generation (Seq2Seq) in Encoder Decoder architecture (Inseq)
+* Integrated Gradients for Text Generation (Seq2Seq) in Decoder architecture (Inseq)
+
 
 
 #### TODO 

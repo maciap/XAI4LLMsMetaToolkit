@@ -23,12 +23,11 @@ from toolkits.direct_logit_attribution import DirectLogitAttribution
 from toolkits.sae_feature_explorer import SAEFeatureExplorer
 import torch  # safe local import for cuda check
 import streamlit.components.v1 as components
-from toolkits.inseq import InseqDecoderIG, InseqEncDecIG
+from toolkits.inseq_proxy_http import InseqDecoderIG_HTTP, InseqEncDecIG_HTTP
 
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 print(os.getcwd())
-
 
 @st.cache_resource
 def get_plugins():
@@ -38,8 +37,8 @@ def get_plugins():
     plugin4 = AlibiAnchorsText()
     plugin5 = DirectLogitAttribution()
     plugin6 = SAEFeatureExplorer()
-    plugin6 = InseqDecoderIG()
-    plugin7 = InseqEncDecIG()
+    plugin7 = InseqDecoderIG_HTTP()
+    plugin8 = InseqEncDecIG_HTTP()
 
     return {
         plugin1.id: plugin1,
@@ -48,8 +47,8 @@ def get_plugins():
         plugin4.id: plugin4,
         plugin5.id: plugin5,
         plugin6.id: plugin6,
-        plugin6.id: plugin6,
         plugin7.id: plugin7,
+        plugin8.id: plugin8,
     }
 
 
@@ -353,10 +352,7 @@ def score(prefs: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str], Lis
 
 
 
-
 def render_plugin_form(plugin):
-    
-
     vals = {}
 
     ANCHOR_DEFAULTS = {
@@ -372,7 +368,6 @@ def render_plugin_form(plugin):
         "max_length": 256,
     }
 
-    # Plugin-specific defaults (extend as you add more plugins)
     SAE_DEFAULTS = {
         "model_name": "gpt2-small",
         "release": "gpt2-small-res-jb",
@@ -388,35 +383,38 @@ def render_plugin_form(plugin):
     plugin_id = getattr(plugin, "id", "")
     default_map = SAE_DEFAULTS if plugin_id == "sae_feature_explorer" else {}
 
-    # ✅ FIX: stable, unique widget keys (prevents Streamlit “sticking” across reruns/tools)
     def _k(field_key: str) -> str:
         return f"{plugin_id}__{field_key}"
 
     for f in plugin.spec():
+        f_default = getattr(f, "default", None)  # ✅ SAFE across plugins
+        f_help = getattr(f, "help", "")
+
         # --- TEXTAREA ---
         if f.type == "textarea":
+            default_val = default_map.get(f.key, f_default if f_default is not None else "")
             vals[f.key] = st.text_area(
                 f.label,
-                value=str(default_map.get(f.key, "")),
-                help=getattr(f, "help", ""),
+                value=str(default_val),
+                help=f_help,
                 key=_k(f.key),
             )
 
         # --- TEXT ---
         elif f.type == "text":
+            default_val = default_map.get(f.key, f_default if f_default is not None else "")
             vals[f.key] = st.text_input(
                 f.label,
-                value=str(default_map.get(f.key, "")),
-                help=getattr(f, "help", ""),
+                value=str(default_val),
+                help=f_help,
                 key=_k(f.key),
             )
 
         # --- SELECT ---
         elif f.type == "select":
-            options = f.options or []
-            default_val = default_map.get(f.key, options[0] if options else "")
+            options = getattr(f, "options", None) or []
+            default_val = default_map.get(f.key, f_default if f_default is not None else (options[0] if options else ""))
 
-            # Choose default index safely
             index = 0
             if options and default_val in options:
                 index = options.index(default_val)
@@ -425,16 +423,23 @@ def render_plugin_form(plugin):
                 f.label,
                 options,
                 index=index,
-                help=getattr(f, "help", ""),
+                help=f_help,
                 key=_k(f.key),
             )
 
         # --- NUMBER ---
         elif f.type == "number":
-            # 1) plugin default overrides everything
-            if f.key in default_map:
+            # Priority order:
+            # 1) FieldSpec.default if present
+            # 2) plugin-specific defaults (SAE_DEFAULTS)
+            # 3) anchor defaults
+            # 4) heuristics fallback
+            if f_default is not None:
+                default = float(f_default)
+            elif f.key in default_map:
                 default = float(default_map[f.key])
-            # 2) otherwise keep your existing heuristics
+            elif f.key in ANCHOR_DEFAULTS:
+                default = float(ANCHOR_DEFAULTS[f.key])
             else:
                 if f.key == "n_steps":
                     default = 50
@@ -446,21 +451,6 @@ def render_plugin_form(plugin):
                     default = -1
                 else:
                     default = 0
-            if f.default:
-                default = f.default
-            elif f.key == "n_steps":
-                default = 50
-            elif f.key == "max_length":
-                default = 128
-            elif f.key == "top_k":
-                default = 10
-            elif f.key == "position_index":
-                default = -1
-            else:
-                default = 0
-
-                if f.key in ANCHOR_DEFAULTS:
-                    default = ANCHOR_DEFAULTS[f.key]
 
             step = 1.0
             if f.key in ("threshold", "delta", "tau"):
@@ -470,23 +460,25 @@ def render_plugin_form(plugin):
                 f.label,
                 value=float(default),
                 step=float(step),
-                help=getattr(f, "help", ""),
+                help=f_help,
                 key=_k(f.key),
             )
 
         # --- CHECKBOX ---
         elif f.type == "checkbox":
+            default_val = default_map.get(f.key, bool(f_default) if f_default is not None else False)
             vals[f.key] = st.checkbox(
                 f.label,
-                value=bool(default_map.get(f.key, False)),
-                help=getattr(f, "help", ""),
+                value=bool(default_val),
+                help=f_help,
                 key=_k(f.key),
             )
 
         else:
-            st.warning(f"Unknown field type: {f.type} (field {f.key})")
+            st.warning(f"Unknown field type: {getattr(f, 'type', 'NA')} (field {getattr(f, 'key', 'NA')})")
 
     return vals
+
 
 
 
@@ -1313,4 +1305,25 @@ with col_run:
                             components.iframe(url, height=560, scrolling=True)
                 else:
                     st.caption("Neuronpedia dashboards not available for this SAE release / id.")
+
+
+
+            elif outputs and outputs.get("plugin") in ("inseq_decoder_ig", "inseq_encdec_ig") and outputs.get("out"):
+                st.subheader("Result")
+                with st.expander("ℹ️ What you are seeing", expanded=True):
+                    st.write(
+                        "- Integrated Gradients attribution visualization produced by Inseq.\n"
+                        "- The visualization is returned as HTML and embedded here.\n"
+                        "- If it looks empty, try smaller max_new_tokens / fewer steps."
+                    )
+
+                st.write(f"**Model:** {outputs.get('model', 'NA')}")
+                st.write(f"**Device:** {outputs.get('device', 'NA')}")
+                st.write(f"**Text:** {outputs.get('text', '')}")
+
+                # Render HTML returned by Inseq
+                components.html(outputs["out"], height=850, scrolling=True)
+
+                # Downloads (JSON always; we’ll add optional HTML download below)
+                render_downloads(outputs, selected_item=selected_item)
 
