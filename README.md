@@ -45,7 +45,7 @@ And we need two envioronments to handle conflicting dependenices. Martino uses a
 * Sparse Autoencoders (The coolest)
 * Integrated Gradients for Text Generation (Seq2Seq) in Encoder Decoder architecture (Inseq)
 * Integrated Gradients for Text Generation (Seq2Seq) in Decoder architecture (Inseq)
-
+* Information flow routes - LLM transparency tool (also very cool) 
 
 
 #### TODO 
