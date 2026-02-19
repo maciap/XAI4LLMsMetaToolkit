@@ -51,4 +51,5 @@ And we need two envioronments to handle conflicting dependenices. Martino uses a
 #### TODO 
 
 * Update and adjust current entries methods.json (containing all the methods that can be recommended)
-* Add more runnable tools 
+* Add more runnable tools
+* Understand how to deploy and make the code package that can be contributed 
