@@ -1177,6 +1177,52 @@
     "Reconstruction–sparsity trade-off: stronger sparsity improves interpretability but may hurt reconstruction quality",
     "Global analysis of a model requires large-scale activation datasets"
   ]
+}, 
+{
+  "name": "Information Flow Routes (LLM Transparency Tool)",
+  "plugin_id": "meta_transparency_graph",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder", "encdec", "transformer_general"]
+  },
+  "target_scope": "both",
+  "description": {
+    "overview": "Information flow routes is a technique rooted in mechanistic interpretability research that, given a graph were nodes represent residual stream of tokens and edges computations, automatically identifies sparse computational subgraphs inside transformer models for specific predictions. Instead of using  expensive activation-patching interventions, the method computes edge attributions based on proximity to the sum of all edges pointing to a node  (residual stream).  By recursively pruning out low-contribution edges in a top-down manner, the information flow routes technique constructs a sparse directed graph representing the computational routes responsible for a prediction.",
+    "main_functionalities": [
+      "Efficiently compute attribution to intermediate transformer components using a single forward pass",
+      "Automatically build prediction-specific information-flow graphs highlighting the most important components for the prediction",
+      "Enable large-scale authomatic circuit discovery"
+    ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Information flow routes: Automatically interpreting language models at scale",
+      "type": "paper",
+      "year": 2024,
+      "source": "Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing (EMNLP 2024)",
+      "url": "https://arxiv.org/abs/2404.07047",
+      "note": "Introduces the \"Information flow routes\" technique to automatically and efficientlyextract sparse computational circuits in large language models."
+    },
+    {
+      "used_in": "LM Transparency Tool: Interactive Tool for Analyzing Transformer Language Models",
+      "type": "demo paper",
+      "year": 2024,
+      "source": "Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL 2024)",
+      "url": "https://aclanthology.org/2024.acl-demos.6.pdf",
+      "note": "Presents the LM Transparency Tool (LM-TT), an open-source interactive toolkit for analyzing the internal workings of Transformer-based language models. This toolkit is based on the \"Information flow routes\" technique and provides a user-friendly interface for exploring the import computational routes responsible for specific predictions in language models."
+    }
+  ],
+  "strengths": [
+    "Enables simple and efficient attribution of model components", 
+    "Enables single-pass, scalable extraction of prediction-specific computational subgraphs without expensive patching",
+    "Unlike alternative patching-based circuit discovery methods, it does not require handcrafted corruption templates"
+  ],
+  "limitations": [
+    "The attribution of model components adopted by the method is correlational. It approximates causal influence and is not strictly interventional",
+    "Thresholding choices affect sparsity and graph structure",
+    "Greedy choices in extracting the subgraph given the attribution may lead to poor results"
+  ]
 }
   ]
 }

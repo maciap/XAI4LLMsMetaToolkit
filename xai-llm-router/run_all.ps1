@@ -1,6 +1,6 @@
 # 1. Define the REAL paths (Adjust these to your machine!)
 $VENV_PATH = "C:\Users\marti\XAI4LLMsMetaToolkit\xai-llm-router\.venv\Scripts\Activate.ps1"
-$APP_DIR = "C:\Users\marti\Documents\xaimetatool"
+$APP_DIR = "C:\Users\marti\XAI4LLMsMetaToolkit\xai-llm-router"
 
 # 2. Set Environment Variables
 $env:INSEQ_URL = "http://127.0.0.1:8001"

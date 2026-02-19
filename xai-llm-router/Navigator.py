@@ -25,6 +25,236 @@ import torch  # safe local import for cuda check
 import streamlit.components.v1 as components
 from toolkits.inseq_proxy_http import InseqDecoderIG_HTTP, InseqEncDecIG_HTTP
 
+from toolkits.meta_transparency import MetaTransparencyGraph  # adjust import path
+
+import tempfile
+import os
+from pyvis.network import Network
+
+def _to_node_id(n: Any) -> str:
+    # pyvis node ids must be str/int; make it stable
+    return str(n)
+
+def _infer_edges_and_nodes(graph_obj: Any):
+    """
+    Best-effort conversion of Meta graph objects to (nodes, edges).
+    Works for:
+      - dict with keys like nodes/edges
+      - list of edge dicts
+    You may need to tweak this once you see your actual graph_data structure.
+    """
+    nodes = {}
+    edges = []
+
+    if isinstance(graph_obj, dict):
+        # Common patterns
+        if "nodes" in graph_obj and "edges" in graph_obj:
+            for n in graph_obj["nodes"]:
+                nid = _to_node_id(n.get("id", n.get("name", n)))
+                nodes[nid] = n
+            for e in graph_obj["edges"]:
+                src = _to_node_id(e.get("source", e.get("src", e.get("from"))))
+                dst = _to_node_id(e.get("target", e.get("dst", e.get("to"))))
+                w = e.get("weight", e.get("value", 1.0))
+                edges.append((src, dst, float(w)))
+                if src not in nodes: nodes[src] = {"id": src, "label": src}
+                if dst not in nodes: nodes[dst] = {"id": dst, "label": dst}
+            return nodes, edges
+
+        # If it's already an edge list dict
+        if "edges" in graph_obj and isinstance(graph_obj["edges"], list):
+            for e in graph_obj["edges"]:
+                if isinstance(e, dict):
+                    src = _to_node_id(e.get("source", e.get("src", e.get("from"))))
+                    dst = _to_node_id(e.get("target", e.get("dst", e.get("to"))))
+                    w = e.get("weight", e.get("value", 1.0))
+                    edges.append((src, dst, float(w)))
+                    nodes.setdefault(src, {"id": src, "label": src})
+                    nodes.setdefault(dst, {"id": dst, "label": dst})
+            return nodes, edges
+
+    # If graph_obj is list of dict edges
+    if isinstance(graph_obj, list):
+        for e in graph_obj:
+            if isinstance(e, dict):
+                src = _to_node_id(e.get("source", e.get("src", e.get("from"))))
+                dst = _to_node_id(e.get("target", e.get("dst", e.get("to"))))
+                w = e.get("weight", e.get("value", 1.0))
+                edges.append((src, dst, float(w)))
+                nodes.setdefault(src, {"id": src, "label": src})
+                nodes.setdefault(dst, {"id": dst, "label": dst})
+        if edges:
+            return nodes, edges
+
+    return nodes, edges
+
+
+def render_meta_flow_pyvis(outputs: Dict[str, Any]):
+    """
+    Renders outputs from MetaTransparencyGraph using PyVis.
+    - outputs["graph_data"] is expected to be a list (typically per-token).
+    - We let the user choose which token graph to inspect.
+    """
+    tokens = outputs.get("tokens", [])
+    graph_data = outputs.get("graph_data", [])
+
+    if not graph_data:
+        st.warning("No graph_data returned.")
+        return
+
+    st.caption("Choose which token-position graph to visualize (Meta returns per-token route graphs).")
+    max_idx = len(graph_data) - 1
+    default_idx = max_idx
+    if isinstance(tokens, list) and tokens:
+        default_idx = min(default_idx, len(tokens) - 1)
+
+    idx = st.slider("Token index", 0, max_idx, default_idx, key="meta_flow_token_idx")
+
+    # Show tokenization context
+    if isinstance(tokens, list) and tokens:
+        preview = " ".join([f"{i}:{t}" for i, t in enumerate(tokens)])
+        with st.expander("Tokenization (index:token)", expanded=False):
+            st.code(preview)
+
+    g = graph_data[idx]
+
+    nodes, edges = _infer_edges_and_nodes(g)
+
+    if not edges:
+        st.warning(
+            "Could not infer edges from graph_data. "
+            "Show the raw JSON below and we’ll adapt the converter to Meta’s exact structure."
+        )
+        st.json(g, expanded=False)
+        return
+
+    # Build interactive network
+    net = Network(height="720px", width="100%", directed=True, notebook=False)
+
+    # Add nodes with optional labels
+    for nid, nobj in nodes.items():
+        label = nobj.get("label") if isinstance(nobj, dict) else None
+        if not label:
+            label = str(nobj.get("id", nid)) if isinstance(nobj, dict) else str(nid)
+        title = None
+        if isinstance(nobj, dict):
+            # hover tooltip: keep compact
+            title = "<br/>".join([f"{k}: {nobj[k]}" for k in list(nobj.keys())[:8]])
+        net.add_node(nid, label=label, title=title)
+
+    # Add edges
+    for (src, dst, w) in edges:
+        # value influences thickness in pyvis
+        net.add_edge(src, dst, value=max(0.1, abs(w)), title=f"weight={w:.4g}")
+
+    # Basic layout tuning
+    net.repulsion(node_distance=170, central_gravity=0.1, spring_length=140, spring_strength=0.04, damping=0.25)
+
+    # Render to HTML and embed
+    html = net.generate_html()
+
+    # Make it more streamlit-friendly (avoid external fetches if possible)
+    components.html(html, height=760, scrolling=True)
+
+
+
+import html
+import re
+import streamlit.components.v1 as components
+
+_NODE_RE = re.compile(r"^(X0|A|M|I)(\d+)?_(\d+)$")  # X0_3 OR A6_3 etc.
+
+def _parse_node(node_id: str):
+    m = _NODE_RE.match(node_id)
+    if not m:
+        return None
+    typ = m.group(1)
+    layer = -1 if typ == "X0" else int(m.group(2))
+    tok = int(m.group(3))
+    return typ, layer, tok
+
+def render_meta_graph_svg(tokens: list[str], graph: dict, n_layers: int, height_px: int = 720):
+    x_step, y_step = 34, 34
+    left_pad, top_pad = 120, 25
+    type_row = {"X0": 0, "A": 1, "M": 2, "I": 3}
+
+    def xy(node_id: str):
+        p = _parse_node(node_id)
+        if not p:
+            return None
+        typ, layer, tok = p
+        layer_row = layer + 1  # X0(-1)->0, L0->1 ...
+        x = left_pad + tok * x_step
+        y = top_pad + (layer_row * 4 + type_row[typ]) * y_step
+        return x, y
+
+    # positions
+    pos = {}
+    for nid in graph.get("nodes", []):
+        nid = str(nid)
+        pt = xy(nid)
+        if pt:
+            pos[nid] = pt
+
+    edges = graph.get("edges", [])
+    if not edges:
+        st.warning("Graph has no edges (try lowering threshold).")
+        return
+
+    max_w = max((abs(float(e.get("weight", 0.0))) for e in edges), default=1.0)
+
+    line_elems = []
+    for e in edges:
+        u, v = str(e.get("src")), str(e.get("dst"))
+        if u not in pos or v not in pos:
+            continue
+        x1, y1 = pos[u]
+        x2, y2 = pos[v]
+        w = float(e.get("weight", 0.0))
+        sw = 0.6 + 4.2 * (abs(w) / (max_w + 1e-9))
+        op = 0.15 + 0.75 * (abs(w) / (max_w + 1e-9))
+        stroke = "#2563eb" if w >= 0 else "#dc2626"
+        line_elems.append(
+            f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
+            f'stroke="{stroke}" stroke-width="{sw:.2f}" stroke-opacity="{op:.2f}" />'
+        )
+
+    dot_elems = [f'<circle cx="{x}" cy="{y}" r="3.2" fill="#111827" fill-opacity="0.85" />'
+                 for (x, y) in pos.values()]
+
+    # token labels
+    base_y = top_pad + ((n_layers + 1) * 4 + 4) * y_step
+    tok_labels = []
+    for i, t in enumerate(tokens):
+        tx = left_pad + i * x_step
+        tok_labels.append(
+            f'<text x="{tx}" y="{base_y}" font-size="10" fill="#111827" text-anchor="middle">{html.escape(t)}</text>'
+        )
+
+    # y labels
+    ylabels = []
+    for layer in range(-1, n_layers):
+        layer_row = layer + 1
+        ylabels.append(
+            f'<text x="10" y="{top_pad + (layer_row*4+0)*y_step + 4}" font-size="11" fill="#374151">'
+            f'{"X0" if layer==-1 else "L"+str(layer)}</text>'
+        )
+
+    width = left_pad + max(1, len(tokens)) * x_step + 40
+    height = max(height_px, int(base_y + 60))
+
+    svg = (
+        f'<svg width="{width}" height="{height}" style="background:white; border:1px solid #e5e7eb; border-radius:12px;">'
+        + "".join(line_elems)
+        + "".join(dot_elems)
+        + "".join(ylabels)
+        + "".join(tok_labels)
+        + "</svg>"
+    )
+
+    components.html(svg, height=min(height, 900), scrolling=True)
+
+
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 print(os.getcwd())
@@ -39,6 +269,8 @@ def get_plugins():
     plugin6 = SAEFeatureExplorer()
     plugin7 = InseqDecoderIG_HTTP()
     plugin8 = InseqEncDecIG_HTTP()
+    plugin9 = MetaTransparencyGraph()
+
 
     return {
         plugin1.id: plugin1,
@@ -49,6 +281,7 @@ def get_plugins():
         plugin6.id: plugin6,
         plugin7.id: plugin7,
         plugin8.id: plugin8,
+        plugin9.id: plugin9
     }
 
 
@@ -1327,3 +1560,40 @@ with col_run:
                 # Downloads (JSON always; we’ll add optional HTML download below)
                 render_downloads(outputs, selected_item=selected_item)
 
+            # Locate your "selected_plugin_id" logic in app.py
+            #if selected_plugin_id == "meta_transparency_graph":
+            #    if st.button("Generate Flow Graph"):
+            #        # Execute the toolkit run()
+            #        with st.spinner("Calculating information routes..."):
+            #            params = render_plugin_form(plugin) # Using your existing form helper
+            #            results = plugin.run(params)
+            #            st.session_state["last_outputs"] = results
+
+            elif outputs and outputs.get("plugin") == "meta_transparency_graph":
+                st.subheader("Result")
+
+                tokens = outputs.get("tokens", [])
+                graph = outputs.get("graph_data")  # <-- dict now
+                model_info = outputs.get("model_info")
+
+                st.caption(
+                    f"Model: {outputs.get('model','NA')} · "
+                    f"layers={getattr(model_info,'n_layers','NA')} · "
+                    f"focus_token={outputs.get('focus_token_index','NA')} · "
+                    f"threshold={outputs.get('threshold','NA')}"
+                )
+
+                if not graph or not isinstance(graph, dict):
+                    st.error("graph_data is missing or not a dict. Showing raw outputs:")
+                    st.json(outputs, expanded=False)
+                elif not graph.get("edges"):
+                    st.warning("Graph has no edges (try lowering threshold).")
+                    st.json(graph, expanded=False)
+                else:
+                    with st.expander("Tokenization (index:token)", expanded=False):
+                        st.code(" ".join([f"{i}:{t}" for i, t in enumerate(tokens)]))
+
+                    n_layers = int(getattr(model_info, "n_layers", 0) or 0)
+                    render_meta_graph_svg(tokens=tokens, graph=graph, n_layers=n_layers, height_px=720)
+
+                render_downloads(outputs, selected_item=selected_item)
