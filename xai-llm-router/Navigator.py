@@ -15,7 +15,13 @@ import streamlit.components.v1 as components
 
 
 from text_to_score import rank_methods
-from toolkits.captum_classifier import CaptumClassifierAttribution
+#from toolkits.captum_classifier import CaptumClassifierAttribution
+from toolkits.captum_classifier_methods import (
+    CaptumIGClassifierAttribution,
+    CaptumSaliencyClassifierAttribution,
+    CaptumDeepLiftClassifierAttribution,
+)
+
 from toolkits.bertviz_attention import BertVizAttention
 from toolkits.logit_lens import LogitLens
 from toolkits.alibi_anchors_text import AlibiAnchorsText
@@ -30,6 +36,166 @@ from toolkits.meta_transparency import MetaTransparencyGraph  # adjust import pa
 import tempfile
 import os
 from pyvis.network import Network
+
+
+def captum_method_explainer_text(algo: str, params: Dict[str, Any]) -> str:
+    algo = (algo or "").strip()
+
+    if algo == "IntegratedGradients":
+        n_steps = params.get("n_steps", "NA")
+        return (
+            "### ℹ️ How to read Integrated Gradients (IG)\n"
+            "- **What it is**: IG measures how much each token changes the target class score when moving from a **baseline** input to your input.\n"
+            "- **Baseline**: here it’s the model’s **[PAD] embedding** (or zeros if PAD doesn’t exist).\n"
+            "- **Interpretation**: tokens with large **positive** values push the model **toward** the explained label; large **negative** values push it **away**.\n"
+            "- **Stability knob**: `n_steps` controls the approximation quality. More steps → smoother but slower.\n"
+            f"- **Your run**: `n_steps={n_steps}`.\n"
+        )
+
+    if algo == "Saliency":
+        return (
+            "### ℹ️ How to read Saliency\n"
+            "- **What it is**: Saliency uses the **gradient of the target logit w.r.t. the input embeddings**.\n"
+            "- **Interpretation**: high magnitude means the label score is **sensitive** to that token.\n"
+            "- **Caveat**: gradients can be **noisy** and sometimes saturate; saliency is fast but less stable than IG.\n"
+            "- **Tip**: if results look spiky, try IG (more stable) or average over multiple runs/seeds.\n"
+        )
+
+    if algo == "DeepLift":
+        return (
+            "### ℹ️ How to read DeepLift\n"
+            "- **What it is**: DeepLift compares activations to a **baseline** and attributes differences back to inputs.\n"
+            "- **Baseline**: here it’s the model’s **[PAD] embedding** (or zeros if PAD doesn’t exist).\n"
+            "- **Interpretation**: positive pushes toward the explained label; negative pushes away.\n"
+            "- **Why use it**: can produce **sharper** attributions than plain gradients when gradients saturate.\n"
+        )
+
+    # fallback
+    return (
+        "### ℹ️ How to read this attribution\n"
+        "- Positive pushes toward the explained label; negative pushes away.\n"
+        "- Larger magnitude = larger influence.\n"
+    )
+
+
+import html as _html
+
+def render_token_highlight(
+    tokens: List[str],
+    scores: List[float],
+    *,
+    title: str = "🖍️ Token highlights",
+    max_abs: float | None = None,
+):
+    """
+    Renders tokens with background intensity based on signed attribution scores.
+    Positive = blue tint, negative = red tint. Intensity ~ |score|.
+
+    tokens: list of tokens (already merged if you do that)
+    scores: list of floats in [-1,1] or any scale; will normalize by max_abs if provided/needed.
+    """
+    if not tokens or not scores or len(tokens) != len(scores):
+        st.caption("No token highlight available.")
+        return
+
+    if max_abs is None:
+        max_abs = max((abs(s) for s in scores), default=1e-9) or 1e-9
+
+    # Build HTML spans
+    spans = []
+    for t, s in zip(tokens, scores):
+        # skip special tokens if they slip in
+        if t in ("[CLS]", "[SEP]", "[PAD]"):
+            continue
+
+        # normalize into [0,1]
+        a = min(1.0, abs(float(s)) / (max_abs + 1e-9))
+
+        # Use RGBA so we can modulate alpha (intensity)
+        # Positive => blue-ish, Negative => red-ish
+        if s >= 0:
+            bg = f"rgba(37, 99, 235, {0.08 + 0.55*a:.3f})"   # blue
+        else:
+            bg = f"rgba(220, 38, 38, {0.08 + 0.55*a:.3f})"   # red
+
+        # Border helps visibility for small alpha
+        style = (
+            "display:inline-block;"
+            "padding:2px 4px;"
+            "margin:2px 2px;"
+            "border-radius:6px;"
+            "border:1px solid rgba(0,0,0,0.06);"
+            f"background:{bg};"
+            "font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
+            "font-size:0.92rem;"
+            "line-height:1.35;"
+        )
+
+        spans.append(f"<span style='{style}' title='{float(s):.4f}'>{_html.escape(t)}</span>")
+
+    st.markdown(f"#### {title}")
+    st.markdown(
+        "<div style='padding:10px; border:1px solid #e5e7eb; border-radius:12px; background:#fff;'>"
+        + "".join(spans)
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.caption("Blue = pushes toward explained label. Red = pushes away. Hover a token to see the score.")
+
+
+def render_captum_result(outputs: Dict[str, Any], selected_item: Dict[str, Any] | None):
+    pred = outputs.get("predicted", {}) or {}
+    tgt = outputs.get("target", {}) or {}
+    params = outputs.get("params", {}) or {}
+
+    algo = outputs.get("algorithm", "NA")
+    model_name = outputs.get("model", "NA")
+
+    st.subheader("Result")
+    st.write(f"**Model:** {model_name}")
+    st.write(f"**Algorithm:** {algo}")
+    st.write(f"**Prediction:** {pred.get('label', pred.get('idx', 'NA'))}")
+    st.write(f"**Label being explained:** {tgt.get('label', tgt.get('idx', 'NA'))}")
+
+    # Method-specific explanation (✅ differs per method)
+    with st.expander("ℹ️ How to read this explanation", expanded=True):
+        st.markdown(captum_method_explainer_text(algo, params))
+
+    # Optional: show IG steps inline too
+    if algo == "IntegratedGradients" and "n_steps" in params:
+        st.caption(f"Integrated Gradients steps: {params.get('n_steps')}")
+
+    st.caption("Each bar shows how strongly a token contributes to the explained label (normalized).")
+
+    df = pd.DataFrame(outputs["attributions"])
+    df_plot = df[~df["token"].isin(["[CLS]", "[SEP]", "[PAD]"])].copy()
+
+    st.dataframe(df_plot[["token", "attr_raw", "attr_norm"]], use_container_width=True)
+
+    fig = plt.figure()
+    plt.bar(range(len(df_plot)), df_plot["attr_norm"].tolist())
+    plt.xticks(range(len(df_plot)), df_plot["token"].tolist(), rotation=45, ha="right")
+    plt.ylabel("Attribution (normalized)")
+    plt.title(f"{algo} token attributions")
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    show_highlight = st.checkbox("Show highlighted text", value=True, key="captum_show_highlight")
+    if show_highlight:
+        render_token_highlight(
+            tokens=df_plot["token"].tolist(),
+            scores=df_plot["attr_norm"].tolist(),  # already normalized to [-1, 1]
+            title="🖍️ Highlighted text (by attribution)",
+            max_abs=1.0,  # because attr_norm is normalized
+        )
+
+    render_downloads(
+        outputs,
+        selected_item=selected_item,
+        figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_attribution_plot.png": fig},
+    )
+
 
 def _to_node_id(n: Any) -> str:
     # pyvis node ids must be str/int; make it stable
@@ -261,7 +427,7 @@ print(os.getcwd())
 
 @st.cache_resource
 def get_plugins():
-    plugin1 = CaptumClassifierAttribution()
+    plugin1 = CaptumIGClassifierAttribution()
     plugin2 = BertVizAttention()
     plugin3 = LogitLens()
     plugin4 = AlibiAnchorsText()
@@ -270,6 +436,8 @@ def get_plugins():
     plugin7 = InseqDecoderIG_HTTP()
     plugin8 = InseqEncDecIG_HTTP()
     plugin9 = MetaTransparencyGraph()
+    plugin10 = CaptumSaliencyClassifierAttribution()
+    plugin11 = CaptumDeepLiftClassifierAttribution()
 
 
     return {
@@ -281,7 +449,9 @@ def get_plugins():
         plugin6.id: plugin6,
         plugin7.id: plugin7,
         plugin8.id: plugin8,
-        plugin9.id: plugin9
+        plugin9.id: plugin9,
+        plugin10.id: plugin10,
+        plugin11.id: plugin11
     }
 
 
@@ -1164,56 +1334,14 @@ with col_run:
 
             outputs = st.session_state.get("last_outputs")
 
-            # ---- Your existing output rendering logic + download hooks (NEW) ----
-            if outputs and outputs.get("attributions"):
-                st.subheader("Result")
-                with st.expander("ℹ️ How to read this explanation", expanded=True):
-                    st.write(
-                        "- **Model**: a text classification model that assigns one label to your sentence.\n"
-                        "- **Prediction**: the label the model believes is most likely.\n"
-                        "- **Label being explained**: the label whose score we attribute back to the input words.\n"
-                        "- **Word importance**: tokens with larger absolute scores influence the label more.\n\n"
-                        "A **positive** attribution pushes the model *toward* the explained label; "
-                        "a **negative** attribution pushes it *away*."
-                    )
+            # ---- Captum renderers (method-specific explanation, shared plot/table) ----
+            if outputs and outputs.get("plugin") in (
+                "captum_ig_classifier",
+                "captum_saliency_classifier",
+                "captum_deeplift_classifier",
+            ) and outputs.get("attributions"):
+                render_captum_result(outputs, selected_item)
 
-                pred = outputs.get("predicted", {})
-                tgt = outputs.get("target", {})
-                params = outputs.get("params", {})
-
-                st.write(f"**Model:** {outputs.get('model', 'NA')}")
-                st.write(f"**Algorithm:** {outputs.get('algorithm', 'NA')}")
-                st.write(f"**Prediction:** {pred.get('label', pred.get('idx', 'NA'))}")
-                st.write(f"**Label being explained:** {tgt.get('label', tgt.get('idx', 'NA'))}")
-
-                if outputs.get("algorithm") == "IntegratedGradients":
-                    st.caption(f"Integrated Gradients steps: {params.get('n_steps', 'NA')}")
-
-                label_map = outputs.get("label_map")
-                if label_map:
-                    st.markdown("**Label meanings (index → name)**")
-                    st.json(label_map, expanded=False)
-
-                st.caption("Each bar shows how strongly a token contributes to the explained label (normalized).")
-
-                df = pd.DataFrame(outputs["attributions"])
-                df_plot = df[~df["token"].isin(["[CLS]", "[SEP]", "[PAD]"])].copy()
-
-                st.dataframe(df_plot[["token", "attr_raw", "attr_norm"]], use_container_width=True)
-
-                fig = plt.figure()
-                plt.bar(range(len(df_plot)), df_plot["attr_norm"].tolist())
-                plt.xticks(range(len(df_plot)), df_plot["token"].tolist(), rotation=45, ha="right")
-                plt.ylabel("Attribution (normalized)")
-                plt.tight_layout()
-                st.pyplot(fig)
-
-                # ✅ Downloads (NEW)
-                render_downloads(
-                    outputs,
-                    selected_item=selected_item,
-                    figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_attribution_plot.png": fig},
-                )
 
             elif outputs and outputs.get("plugin") == "bertviz_attention" and outputs.get("html"):
                 st.subheader("Result")

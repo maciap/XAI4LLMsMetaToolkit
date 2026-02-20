@@ -882,16 +882,150 @@
       "notes": "Interactive flow graph of forward pass; logit lens projections for hidden states and neuron activations."
     },
     {
-    "name": "Captum (classifier attribution)",
-    "plugin_id": "captum_classifier",
-    "task_input": ["classification"],
-    "access_arch": {"access": "white_box", "arch": "transformer_general"},
-    "target_scope": "local",
-    "granularity": ["token"],
-    "format": ["visual_UI"],
-    "fidelity": "high",
-    "notes": "Generic Captum attribution for HF sequence classifiers (IG/Saliency/DeepLift)."
-   }, 
+  "name": "Integrated Gradients (Captum)",
+  "plugin_id": "captum_ig_classifier",
+  "task_input": ["classification", "generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["all"]
+  },
+  "target_scope": "local",
+  "description": {
+    "overview": "Integrated Gradients (IG) attributes a target class score to input tokens by integrating gradients along a path from a baseline input (e.g., PAD embedding) to the actual input. Compared to raw gradients, IG is typically more stable and less noisy for NLP token attribution.",
+    "main_functionalities": [
+      "Token-level attributions for a chosen class (predicted or user-specified)",
+      "Baseline-based attributions (PAD embedding when available, otherwise zeros)",
+      "Configurable integration steps (n_steps) to trade off stability vs speed"
+    ]
+  },
+  "strengths": [
+    "Usually more stable than plain gradients (Saliency) because it averages along an integration path",
+    "Baseline-based framing is intuitive: ‘how much does the prediction change from baseline to input?’",
+    "Good default for debugging text classifiers: tends to produce smoother token importances"
+  ],
+  "limitations": [
+    "Baseline choice matters: different baselines can change attributions significantly",
+    "More expensive than Saliency due to multiple forward/backward passes (n_steps)",
+    "Still correlational: large attribution does not prove causal necessity without interventions"
+  ],
+  "research_applications": [
+      {
+      "used_in": "Axiomatic attribution for deep networks",
+      "type": "paper",
+      "year": 2017,
+      "source": "Proceedings of the 34th International Conference on Machine Learning (ICML 2017)",
+      "url": "https://dl.acm.org/doi/10.5555/3305890.3306024",
+      "note": "Introduces the \"Integrated Gradients\" attribution method."
+      }, 
+       {
+      "used_in": "Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software (NLP-OSS 2023)",
+      "type": "paper",
+      "year": 2023,
+      "source": "NLP-OSS 2023",
+      "url": "https://aclanthology.org/2023.nlposs-1.19/",
+      "note": "Discusses features added to the Captum library (Captum v0.7) for language models."
+
+      }
+      ]
+},
+{
+  "name": "Saliency (Captum)",
+  "plugin_id": "captum_saliency_classifier",
+  "task_input": ["classification", "generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["transformer_general", "encoder", "NA"]
+  },
+  "target_scope": "local",
+  "granularity": ["token", "layer", "NA"],
+  "user_goal_audience": ["research_debug", "general_tooling"],
+  "fidelity": "low",
+  "format": ["visual_UI", "API_only", "notebook_viz"],
+  "description": {
+    "overview": "Saliency computes token importance using the gradient of the target class score with respect to the input embeddings. It’s fast and simple, but often noisier than baseline-based methods like Integrated Gradients.",
+    "main_functionalities": [
+      "Fast token-level sensitivity scores for a chosen class",
+      "No baseline required (single backward pass)",
+      "Useful for quick inspection / debugging loops"
+    ]
+  },
+  "strengths": [
+    "Very fast (typically a single forward+backward pass)",
+    "Good for rapid debugging: ‘which tokens is the logit most sensitive to?’",
+    "Simple to explain and easy to implement"
+  ],
+  "limitations": [
+    "Often noisy / unstable; may highlight spurious sensitivities",
+    "Can suffer from gradient saturation and discontinuities",
+    "Sensitivity ≠ importance: high gradient may not correspond to causal influence"
+  ],
+  "research_applications": [
+      {
+      "used_in": "Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps",
+      "type": "paper",
+      "year": 2014,
+      "source": "Workshop Track Proceedings of the 2nd International Conference on Learning Representations (ICLR 2014)",
+      "url": "https://arxiv.org/pdf/1312.6034",
+      "note": "Introduces the \"Saliency\" attribution method."
+      }, 
+       {
+      "used_in": "Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software (NLP-OSS 2023)",
+      "type": "paper",
+      "year": 2023,
+      "source": "NLP-OSS 2023",
+      "url": "https://aclanthology.org/2023.nlposs-1.19/",
+      "note": "Discusses features added to the Captum library (Captum v0.7) for language models."
+
+      }
+      ]
+},
+{
+  "name": "DeepLift (Captum)",
+  "plugin_id": "captum_deeplift_classifier",
+  "task_input": ["classification", "generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["transformer_general", "encoder", "NA"]
+  },
+  "target_scope": "local",
+  "description": {
+    "overview": "DeepLift attributes a target class score by comparing activations to a baseline and propagating contribution differences backward. In practice it can be sharper than plain gradients when gradients saturate, while remaining cheaper than high-step IG.",
+    "main_functionalities": [
+      "Baseline-based token attributions for a chosen class",
+      "Often better behaved than plain gradients under saturation",
+      "Useful alternative when IG is too slow or baseline sensitivity is acceptable"
+    ]
+  },
+  "strengths": [
+    "Baseline-based like IG, but often cheaper than high-step IG",
+    "Can handle some saturation cases better than raw gradients",
+    "Often yields clearer token attribution patterns than Saliency"
+  ],
+  "limitations": [
+    "Baseline choice matters (similar to IG)",
+    "Can behave unexpectedly depending on model components and non-linearities",
+    "Still not causal: attributions can be overridden/cancelled by downstream computations"
+  ],
+  "research_applications": [
+      {
+      "used_in": "Learning Important Features Through Propagating Activation Differences",
+      "type": "paper",
+      "year": 2017,
+      "source": "Proceedings of the 34th International Conference on Machine Learning (ICML 2017)",
+      "url": "https://proceedings.mlr.press/v70/shrikumar17a.html",
+      "note": "Introduces the \"DeepLift\" attribution method."
+      }, 
+       {
+      "used_in": "Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software (NLP-OSS 2023)",
+      "type": "paper",
+      "year": 2023,
+      "source": "NLP-OSS 2023",
+      "url": "https://aclanthology.org/2023.nlposs-1.19/",
+      "note": "Discusses features added to the Captum library (Captum v0.7) for language models."
+
+      }
+      ]
+}, 
    {
   "name": "Logit Lens",
   "plugin_id": "logit_lens",
