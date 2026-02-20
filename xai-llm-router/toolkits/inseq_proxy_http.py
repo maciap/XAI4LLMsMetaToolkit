@@ -21,15 +21,27 @@ class ToolkitPlugin:
     def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]: ...
 
 class _InseqHTTPBase(ToolkitPlugin):
-    base_url: str = os.environ.get("INSEQ_URL", "http://127.0.0.1:8001")
     remote_id: str = ""
 
+    @property
+    def base_url(self) -> str:
+        # Read env var dynamically (so it works even if env is set after import)
+        return os.environ.get("INSEQ_URL", "http://127.0.0.1:8001").rstrip("/")
+
     def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        r = requests.post(
-            f"{self.base_url}/run",
-            json={"plugin": self.remote_id, "inputs": inputs},
-            timeout=600,
-        )
+        url = f"{self.base_url}/run"
+        try:
+            r = requests.post(
+                url,
+                json={"plugin": self.remote_id, "inputs": inputs},
+                timeout=600,
+            )
+        except requests.RequestException as e:
+            raise RuntimeError(
+                f"Could not reach Inseq service at {url}. "
+                f"Is it running? Error: {e}"
+            ) from e
+
         if not r.ok:
             raise RuntimeError(f"Inseq service error ({r.status_code}): {r.text}")
         return r.json()
