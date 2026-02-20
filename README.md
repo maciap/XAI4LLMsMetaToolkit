@@ -30,8 +30,9 @@ streamlit run app.py
 
 In Windows (power shell), to the app, Martino runs: 
 ```bash
-.\run_all.ps1
+.\run_all2.ps1
 ```
+Which automatically runs all! 
 And we need two envioronments to handle conflicting dependenices. Martino uses a conda envioronment with "xai-inseq-requirements.txt" and a virtual envioronment with "requirements_new.txt". 
 
 
