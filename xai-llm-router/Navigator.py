@@ -37,6 +37,11 @@ import tempfile
 import os
 from pyvis.network import Network
 
+from toolkits.PCAViz import EmbeddingPCALayers
+import plotly.express as px
+import plotly.graph_objects as go
+
+
 
 def captum_method_explainer_text(algo: str, params: Dict[str, Any]) -> str:
     algo = (algo or "").strip()
@@ -438,6 +443,7 @@ def get_plugins():
     plugin9 = MetaTransparencyGraph()
     plugin10 = CaptumSaliencyClassifierAttribution()
     plugin11 = CaptumDeepLiftClassifierAttribution()
+    plugin12 = EmbeddingPCALayers()
 
 
     return {
@@ -451,7 +457,8 @@ def get_plugins():
         plugin8.id: plugin8,
         plugin9.id: plugin9,
         plugin10.id: plugin10,
-        plugin11.id: plugin11
+        plugin11.id: plugin11, 
+        plugin12.id: plugin12
     }
 
 
@@ -1725,3 +1732,163 @@ with col_run:
                     render_meta_graph_svg(tokens=tokens, graph=graph, n_layers=n_layers, height_px=720)
 
                 render_downloads(outputs, selected_item=selected_item)
+
+
+            elif outputs and outputs.get("plugin") == "embedding_pca_layers" and outputs.get("projected"):
+                st.subheader("Result")
+
+                # --- explainer ---
+                with st.expander("ℹ️ How to read this PCA view", expanded=True):
+                    st.write(
+                        "- We project each token’s vector into PCA space.\n"
+                        "- **Single basis**: PCA is fit once (default: last layer) and reused → plots are comparable across layers.\n"
+                        "- **Per-layer basis**: PCA is fit separately per layer → shows within-layer structure but axes are not comparable.\n"
+                        "- Tokens are labeled by their tokenizer output; subword tokens may look like 'Ġword' (GPT-2) or '##ing' (BERT).\n"
+                        "- In 3D, labels can be occluded; hover always shows token strings."
+                    )
+
+                st.write(f"**Model:** {outputs.get('model','NA')}")
+                params = outputs.get("params", {}) or {}
+                st.caption(
+                    f"basis_mode={params.get('basis_mode','NA')} · "
+                    f"fit_on={params.get('single_basis_fit_on','NA')} · "
+                    f"max_length={params.get('max_length','NA')} · "
+                    f"drop_special_tokens={params.get('drop_special_tokens','NA')}"
+                )
+
+                # --- tokenization preview ---
+                toks = outputs.get("tokens", []) or []
+                if toks:
+                    with st.expander("Tokenization (index:token)", expanded=False):
+                        st.code(" ".join([f"{i}:{t}" for i, t in enumerate(toks)]))
+
+                projected = outputs["projected"]
+                max_layer = len(projected) - 1
+
+                # nicer default: show last layer
+                layer_idx = st.slider(
+                    "Layer index (includes embeddings at 0)",
+                    0,
+                    max_layer,
+                    max_layer,
+                    key="pca_layers__layer_idx",
+                )
+
+                layer_obj = projected[layer_idx]
+                df = pd.DataFrame(layer_obj.get("rows", []))
+
+                # pca info differs depending on mode
+                pca_info = layer_obj.get("pca_info", {}) or {}
+                evr = pca_info.get("explained_variance_ratio", None)
+                if evr and isinstance(evr, (list, tuple)) and len(evr) >= 2:
+                    st.caption(
+                        f"PCA variance explained: PC1={float(evr[0]):.3f}, PC2={float(evr[1]):.3f} "
+                        f"(method={pca_info.get('method','NA')}, fit_on={pca_info.get('fit_on','NA')})"
+                    )
+                else:
+                    st.caption(f"PCA: method={pca_info.get('method','NA')} · fit_on={pca_info.get('fit_on','NA')}")
+
+                if df.empty:
+                    st.warning("No PCA rows returned.")
+                    st.json(layer_obj, expanded=False)
+                else:
+                    # show cols depending on pc3 availability
+                    cols = ["i", "token", "token_id", "pc1", "pc2"] + (["pc3"] if "pc3" in df.columns else [])
+                    st.dataframe(df[cols], use_container_width=True)
+
+                    # --- plot controls ---
+                    c1, c2, c3, c4 = st.columns([1.0, 1.0, 1.0, 1.2], gap="medium")
+                    with c1:
+                        show_labels_2d = st.checkbox("Label points with tokens (2D)", value=True, key="pca_layers__labels_2d")
+                    with c2:
+                        label_every_2d = st.slider("2D label every N tokens", 1, 8, 1, key="pca_layers__label_every_2d")
+                    with c3:
+                        point_size = st.slider("Point size", 10, 80, 35, key="pca_layers__ptsize")
+                    with c4:
+                        show_3d = st.checkbox("Show interactive 3D (drag)", value=True, key="pca_layers__show_3d")
+
+                    # -------------------------
+                    # 2D scatter (matplotlib)
+                    # -------------------------
+                    fig = plt.figure()
+                    plt.scatter(df["pc1"].values, df["pc2"].values, s=int(point_size))
+                    plt.xlabel("PC1")
+                    plt.ylabel("PC2")
+                    plt.title(f"Token representations in PCA space — layer {layer_idx}")
+
+                    if show_labels_2d:
+                        for _, r in df.iterrows():
+                            if int(r["i"]) % int(label_every_2d) != 0:
+                                continue
+                            plt.text(float(r["pc1"]), float(r["pc2"]), str(r["token"]), fontsize=8)
+
+                    plt.tight_layout()
+                    st.pyplot(fig)
+
+                    # -------------------------
+                    # 3D scatter (plotly, draggable) + token strings (hover + optional visible labels)
+                    # -------------------------
+                    if show_3d:
+                        if "pc3" not in df.columns:
+                            st.info(
+                                "3D view requires `pc3` in the plugin outputs. "
+                                "Update the PCA plugin to return 3 components (pc1, pc2, pc3) for each layer."
+                            )
+                        else:
+                            # extra UI for 3D labeling
+                            d1, d2, d3 = st.columns([1.0, 1.0, 1.2], gap="medium")
+                            with d1:
+                                show_3d_labels = st.checkbox("Show token labels in 3D", value=False, key="pca_layers__3d_labels")
+                            with d2:
+                                label_every_3d = st.slider("3D label every N tokens", 1, 12, 3, key="pca_layers__label_every_3d")
+                            with d3:
+                                marker_size_3d = st.slider("3D marker size", 2, 12, 5, key="pca_layers__marker_size_3d")
+
+                            df3 = df.copy()
+                            if show_3d_labels:
+                                df3["text_label"] = df3.apply(
+                                    lambda r: str(r["token"]) if (int(r["i"]) % int(label_every_3d) == 0) else "",
+                                    axis=1,
+                                )
+                            else:
+                                df3["text_label"] = ""
+
+                            # IMPORTANT: hover_name ensures token string shows on hover
+                            fig3d = px.scatter_3d(
+                                df3,
+                                x="pc1",
+                                y="pc2",
+                                z="pc3",
+                                hover_name="token",
+                                hover_data={"i": True, "token_id": True, "pc1": ":.4f", "pc2": ":.4f", "pc3": ":.4f"},
+                            )
+
+                            # IMPORTANT: mode markers+text is what makes labels visible in 3D
+                            fig3d.update_traces(
+                                mode="markers+text" if show_3d_labels else "markers",
+                                text=df3["text_label"],
+                                textposition="top center",
+                                marker=dict(size=int(marker_size_3d)),
+                                hovertemplate=(
+                                    "<b>%{hovertext}</b><br>"
+                                    "i=%{customdata[0]}<br>"
+                                    "token_id=%{customdata[1]}<br>"
+                                    "pc1=%{x:.4f}<br>"
+                                    "pc2=%{y:.4f}<br>"
+                                    "pc3=%{z:.4f}<extra></extra>"
+                                ),
+                            )
+
+                            fig3d.update_layout(
+                                height=720,
+                                title=f"Token representations in 3D PCA space — layer {layer_idx}",
+                                margin=dict(l=0, r=0, t=50, b=0),
+                            )
+
+                            st.plotly_chart(fig3d, use_container_width=True)
+
+                    # ✅ Downloads (2D plot as PNG; JSON always available via render_downloads)
+                    figs_to_download = {
+                        f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_pca_layer_{layer_idx}_2d.png": fig
+                    }
+                    render_downloads(outputs, selected_item=selected_item, figs=figs_to_download)

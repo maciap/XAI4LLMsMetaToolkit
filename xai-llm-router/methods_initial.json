@@ -1,0 +1,1422 @@
+{
+  "toolkits": [
+    {
+      "name": "Captum",
+      "task_input": [
+        "general_NLP",
+        "classification",
+        "NA"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box"
+        ],
+        "arch": [
+          "transformer_general",
+          "NA"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "token",
+        "neuron",
+        "layer"
+      ],
+      "user_goal_audience": [
+        "research_debug",
+        "general_tooling"
+      ],
+      "fidelity": "medium",
+      "format": [
+        "notebook_viz",
+        "API_only"
+      ],
+      "notes": "Attribution methods: primary attribution, layer attribution, neuron attribution."
+    },
+    {
+      "name": "InterpretML",
+      "task_input": [
+        "general_NLP",
+        "NA"
+      ],
+      "access_arch": {
+        "access": [
+          "black_box",
+          "white_box",
+          "mixed"
+        ],
+        "arch": [
+          "non_llm",
+          "NA"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "dataset",
+        "NA"
+      ],
+      "user_goal_audience": [
+        "general_tooling",
+        "model_eval"
+      ],
+      "fidelity": "medium",
+      "format": [
+        "API_only",
+        "metrics"
+      ],
+      "notes": "Classic post-hoc methods: SHAP, LIME, partial dependence plots, Morris sensitivity analysis."
+    },
+    {
+      "name": "Alibi",
+      "task_input": [
+        "general_NLP",
+        "classification",
+        "NA"
+      ],
+      "access_arch": {
+        "access": [
+          "black_box",
+          "mixed"
+        ],
+        "arch": [
+          "transformer_general",
+          "NA"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "token",
+        "span",
+        "example",
+        "rules",
+        "NA"
+      ],
+      "user_goal_audience": [
+        "general_tooling",
+        "end_user_explain"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "API_only",
+        "rules",
+        "ranked_examples",
+        "NA"
+      ],
+      "notes": "Broader XAI: ALE, permutation importance, pertinent positives, counterfactuals; text methods include Anchors, IG, similarity explanations."
+    },
+    {
+      "name": "Dalex",
+      "task_input": [
+        "tabular_only"
+      ],
+      "access_arch": {
+        "access": [
+          "black_box",
+          "mixed"
+        ],
+        "arch": [
+          "non_llm"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "dataset"
+      ],
+      "user_goal_audience": [
+        "model_eval",
+        "fairness_audit"
+      ],
+      "fidelity": "medium",
+      "format": [
+        "API_only",
+        "metrics"
+      ],
+      "notes": "Explainability + fairness; supports tabular data only."
+    },
+    {
+      "name": "FAT Forensics",
+      "task_input": [
+        "tabular_only"
+      ],
+      "access_arch": {
+        "access": [
+          "black_box",
+          "mixed"
+        ],
+        "arch": [
+          "non_llm"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "dataset"
+      ],
+      "user_goal_audience": [
+        "fairness_audit",
+        "model_eval"
+      ],
+      "fidelity": "medium",
+      "format": [
+        "API_only",
+        "metrics"
+      ],
+      "notes": "Fairness/accountability/transparency toolbox; focusing on tabular data."
+    },
+    {
+      "name": "Amazon SageMaker Clarify",
+      "task_input": [
+        "general_NLP",
+        "tabular_only",
+        "NA"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "non_llm",
+          "transformer_general",
+          "NA"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "dataset",
+        "NA"
+      ],
+      "user_goal_audience": [
+        "fairness_audit",
+        "model_eval"
+      ],
+      "fidelity": "medium",
+      "format": [
+        "API_only",
+        "metrics"
+      ],
+      "notes": "AWS tool for fairness + explainability; includes SHAP and PDP."
+    },
+    {
+      "name": "PnPXAI",
+      "task_input": [
+        "multimodal",
+        "general_NLP"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed",
+          "NA"
+        ],
+        "arch": [
+          "transformer_general",
+          "non_llm",
+          "NA"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "dataset",
+        "NA"
+      ],
+      "user_goal_audience": [
+        "general_tooling",
+        "end_user_explain"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "API_only",
+        "NA"
+      ],
+      "notes": "Auto-detects architecture, recommends explainers for data type, can optimize explainer hyperparameters."
+    },
+    {
+      "name": "EXPLAINABOARD",
+      "task_input": [
+        "general_NLP"
+      ],
+      "access_arch": {
+        "access": [
+          "NA"
+        ],
+        "arch": [
+          "NA"
+        ]
+      },
+      "target_scope": "global",
+      "granularity": [
+        "dataset"
+      ],
+      "user_goal_audience": [
+        "model_eval"
+      ],
+      "fidelity": "NA",
+      "format": [
+        "visual_UI",
+        "metrics"
+      ],
+      "notes": "Leaderboard emphasizing interpretability, interactivity, reliability of evaluation (as described)."
+    },
+    {
+      "name": "Alibi (text explainers)",
+      "task_input": [
+        "classification"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "transformer_general",
+          "NA"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "token",
+        "span",
+        "rules",
+        "example"
+      ],
+      "user_goal_audience": [
+        "general_tooling",
+        "end_user_explain"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "rules",
+        "ranked_examples",
+        "API_only"
+      ],
+      "notes": "Text explainers: Anchors (rule-based), Integrated Gradients, similarity explanations (nearest training examples)."
+    },
+    {
+      "name": "ferret",
+      "task_input": [
+        "classification"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "transformer_general"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "token",
+        "span"
+      ],
+      "user_goal_audience": [
+        "research_debug",
+        "model_eval"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "API_only",
+        "metrics",
+        "notebook_viz"
+      ],
+      "notes": "Transformers text classification explainers (gradients, IG, SHAP, LIME) + faithfulness/plausibility metrics + benchmark datasets."
+    },
+    {
+      "name": "transformers-interpret",
+      "task_input": [
+        "classification",
+        "QA",
+        "NER"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box",
+          "mixed"
+        ],
+        "arch": [
+          "transformer_general"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "token"
+      ],
+      "user_goal_audience": [
+        "general_tooling",
+        "research_debug"
+      ],
+      "fidelity": "medium",
+      "format": [
+        "API_only"
+      ],
+      "notes": "Convenient attribution scores for HF Transformers; tasks include classification, QA, NER (as described)."
+    },
+    {
+      "name": "Captum v0.7",
+      "task_input": [
+        "generation",
+        "seq2seq"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "decoder",
+          "encdec",
+          "transformer_general"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "token"
+      ],
+      "user_goal_audience": [
+        "research_debug",
+        "general_tooling"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "notebook_viz",
+        "API_only"
+      ],
+      "notes": "Extends attribution to text generation; prompt token → generated token impact via perturbation- and gradient-based approaches; includes visualization utilities."
+    },
+    {
+      "name": "Integrated Gradients - Decoder Only (Inseq)",
+      "plugin_id": "inseq_decoder_ig",
+      "task_input": [
+        "generation"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "decoder"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "token"
+      ],
+      "user_goal_audience": [
+        "research_debug",
+        "general_tooling"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "API_only",
+        "notebook_viz"
+      ],
+      "notes": "Builds on Captum for attribution in generation; target sequence or generated sequence; includes discretized IG and attention-based attribution."
+    },
+    {
+      "name": "Integrated Gradients - EncoderDecoder (Inseq)",
+      "plugin_id": "inseq_encdec_ig",
+      "task_input": [
+        "seq2seq"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "encdec"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "token"
+      ],
+      "user_goal_audience": [
+        "research_debug",
+        "general_tooling"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "API_only",
+        "notebook_viz"
+      ],
+      "notes": "Builds on Captum for attribution in generation; target sequence or generated sequence; includes discretized IG and attention-based attribution."
+    },
+    {
+      "name": "Interpret-Text",
+      "task_input": [
+        "classification",
+        "generation"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "encoder",
+          "NA"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "token",
+        "span",
+        "layer",
+        "dataset"
+      ],
+      "user_goal_audience": [
+        "research_debug",
+        "general_tooling"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "API_only"
+      ],
+      "notes": "Built on InterpretML; includes BERT intermediate-layer information-based explainer, selective rationalization, and perturbation-based explainers."
+    },
+    {
+      "name": "INTERPRETO",
+      "task_input": [
+        "classification",
+        "generation"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "transformer_general",
+          "NA"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "token",
+        "concept",
+        "dataset",
+        "NA"
+      ],
+      "user_goal_audience": [
+        "research_debug",
+        "general_tooling"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "API_only"
+      ],
+      "notes": "Unified API; perturbation- and gradient-based attributions + concept-based explanations."
+    },
+    {
+      "name": "AllenNLP Interpret",
+      "task_input": [
+        "classification",
+        "QA",
+        "NER",
+        "general_NLP"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box",
+          "mixed"
+        ],
+        "arch": [
+          "transformer_general",
+          "NA"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "token",
+        "span",
+        "example"
+      ],
+      "user_goal_audience": [
+        "research_debug"
+      ],
+      "fidelity": "medium",
+      "format": [
+        "API_only",
+        "notebook_viz"
+      ],
+      "notes": "Gradients + adversarial attacks to generate counterfactuals/exemplars; supports multiple NLP tasks."
+    },
+    {
+      "name": "LIT (Language Interpretability Tool)",
+      "task_input": [
+        "general_NLP",
+        "classification",
+        "generation"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "transformer_general",
+          "NA"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "token",
+        "dataset",
+        "example"
+      ],
+      "user_goal_audience": [
+        "research_debug",
+        "model_eval"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "visual_UI"
+      ],
+      "notes": "Browser-based; salience maps, embedding visualizations, counterfactual generation, interactive exploration; supports custom models/datasets; not LLM-specific."
+    },
+    {
+      "name": "ECCO",
+      "task_input": [
+        "general_NLP",
+        "generation",
+        "seq2seq"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box",
+          "mixed"
+        ],
+        "arch": [
+          "decoder",
+          "encdec"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "token",
+        "neuron",
+        "layer",
+        "dataset",
+        "concept",
+        "NA"
+      ],
+      "user_goal_audience": [
+        "research_debug",
+        "mech_interp"
+      ],
+      "fidelity": "medium",
+      "format": [
+        "visual_UI",
+        "notebook_viz"
+      ],
+      "notes": "Input attribution (Grad×Input), hidden-state evolution (CCA, logit lens), neuron inspection (NMF, probing classifiers)."
+    },
+    {
+      "name": "LLMCheckup",
+      "task_input": [
+        "general_NLP",
+        "QA",
+        "NA"
+      ],
+      "access_arch": {
+        "access": [
+          "mixed"
+        ],
+        "arch": [
+          "decoder",
+          "transformer_general",
+          "NA"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "token",
+        "example",
+        "dataset",
+        "NA"
+      ],
+      "user_goal_audience": [
+        "end_user_explain",
+        "research_debug"
+      ],
+      "fidelity": "mixed",
+      "format": [
+        "interactive_dialogue"
+      ],
+      "notes": "Conversational examination; integrates internal-access methods (feature attribution, semantic similarity) plus prompting-based rationalization/counterfactuals without internals."
+    },
+    {
+      "name": "TransformerLens",
+      "task_input": [
+        "general_NLP",
+        "NA"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box"
+        ],
+        "arch": [
+          "transformer_general"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "head",
+        "neuron",
+        "layer",
+        "circuit",
+        "component_graph"
+      ],
+      "user_goal_audience": [
+        "mech_interp",
+        "research_debug"
+      ],
+      "fidelity": "high",
+      "format": [
+        "API_only",
+        "notebook_viz"
+      ],
+      "notes": "Hooks on modules; capture activations/gradients; activation+path patching; logit/attention lenses; IOI-style analyses."
+    },
+    {
+      "name": "MechaMap",
+      "task_input": [
+        "general_NLP"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box"
+        ],
+        "arch": [
+          "transformer_general"
+        ]
+      },
+      "target_scope": "global",
+      "granularity": [
+        "neuron",
+        "layer"
+      ],
+      "user_goal_audience": [
+        "mech_interp",
+        "research_debug"
+      ],
+      "fidelity": "medium",
+      "format": [
+        "API_only"
+      ],
+      "notes": "Identifies neurons/groups that activate for a semantic feature; used to locate domain-specific signals."
+    },
+    {
+      "name": "sae-lens",
+      "task_input": [
+        "general_NLP"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box"
+        ],
+        "arch": [
+          "transformer_general"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "concept",
+        "neuron",
+        "layer"
+      ],
+      "user_goal_audience": [
+        "mech_interp",
+        "research_debug"
+      ],
+      "fidelity": "high",
+      "format": [
+        "API_only",
+        "notebook_viz"
+      ],
+      "notes": "Sparse autoencoders on activations; inspect features and do causal evaluation via ablation/patching."
+    },
+    {
+      "name": "BertViz",
+      "plugin_id": "bertviz_attention",
+      "task_input": [
+        "general_NLP"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box",
+          "gray_box"
+        ],
+        "arch": [
+          "encoder",
+          "encdec",
+          "decoder"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "head",
+        "token",
+        "layer"
+      ],
+      "user_goal_audience": [
+        "research_debug"
+      ],
+      "fidelity": "low",
+      "format": [
+        "visual_UI"
+      ],
+      "notes": "Attention visualization; model view + neuron view; attention-only explanations can be misleading."
+    },
+    {
+      "name": "exBERT",
+      "task_input": [
+        "general_NLP"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box",
+          "gray_box"
+        ],
+        "arch": [
+          "encoder",
+          "NA"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "head",
+        "token",
+        "layer"
+      ],
+      "user_goal_audience": [
+        "research_debug"
+      ],
+      "fidelity": "low",
+      "format": [
+        "visual_UI"
+      ],
+      "notes": "Interprets attention patterns while also considering attended-to embeddings; works on user-defined model and corpus."
+    },
+    {
+      "name": "LM-Debugger",
+      "task_input": [
+        "general_NLP",
+        "NA"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box"
+        ],
+        "arch": [
+          "transformer_general"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "layer",
+        "neuron",
+        "component_graph"
+      ],
+      "user_goal_audience": [
+        "mech_interp",
+        "research_debug"
+      ],
+      "fidelity": "high",
+      "format": [
+        "visual_UI",
+        "NA"
+      ],
+      "notes": "Layer-wise interpretation with FFN sub-updates projected to vocab; targeted interventions; index of FFN vectors."
+    },
+    {
+      "name": "LM Transparency Tool (LM-TT)",
+      "task_input": [
+        "general_NLP"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box"
+        ],
+        "arch": [
+          "transformer_general"
+        ]
+      },
+      "target_scope": "both",
+      "granularity": [
+        "head",
+        "neuron",
+        "layer",
+        "component_graph"
+      ],
+      "user_goal_audience": [
+        "mech_interp",
+        "research_debug"
+      ],
+      "fidelity": "high",
+      "format": [
+        "visual_UI"
+      ],
+      "notes": "Highlights important input→output information flow; component attribution from heads to neurons; uses logit lens/update projection; includes attention visualizations."
+    },
+    {
+      "name": "VISIT",
+      "task_input": [
+        "general_NLP"
+      ],
+      "access_arch": {
+        "access": [
+          "white_box"
+        ],
+        "arch": [
+          "transformer_general"
+        ]
+      },
+      "target_scope": "local",
+      "granularity": [
+        "neuron",
+        "layer",
+        "component_graph"
+      ],
+      "user_goal_audience": [
+        "mech_interp",
+        "research_debug"
+      ],
+      "fidelity": "high",
+      "format": [
+        "visual_UI"
+      ],
+      "notes": "Interactive flow graph of forward pass; logit lens projections for hidden states and neuron activations."
+    },
+    {
+  "name": "Integrated Gradients (Captum)",
+  "plugin_id": "captum_ig_classifier",
+  "task_input": ["classification", "generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["all"]
+  },
+  "target_scope": "local",
+  "description": {
+    "overview": "Integrated Gradients (IG) attributes a target class score to input tokens by integrating gradients along a path from a baseline input (e.g., PAD embedding) to the actual input. Compared to raw gradients, IG is typically more stable and less noisy for NLP token attribution.",
+    "main_functionalities": [
+      "Token-level attributions for a chosen class (predicted or user-specified)",
+      "Baseline-based attributions (PAD embedding when available, otherwise zeros)",
+      "Configurable integration steps (n_steps) to trade off stability vs speed"
+    ]
+  },
+  "strengths": [
+    "Usually more stable than plain gradients (Saliency) because it averages along an integration path",
+    "Baseline-based framing is intuitive: ‘how much does the prediction change from baseline to input?’",
+    "Good default for debugging text classifiers: tends to produce smoother token importances"
+  ],
+  "limitations": [
+    "Baseline choice matters: different baselines can change attributions significantly",
+    "More expensive than Saliency due to multiple forward/backward passes (n_steps)",
+    "Still correlational: large attribution does not prove causal necessity without interventions"
+  ],
+  "research_applications": [
+      {
+      "used_in": "Axiomatic attribution for deep networks",
+      "type": "paper",
+      "year": 2017,
+      "source": "Proceedings of the 34th International Conference on Machine Learning (ICML 2017)",
+      "url": "https://dl.acm.org/doi/10.5555/3305890.3306024",
+      "note": "Introduces the \"Integrated Gradients\" attribution method."
+      }, 
+       {
+      "used_in": "Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software (NLP-OSS 2023)",
+      "type": "paper",
+      "year": 2023,
+      "source": "NLP-OSS 2023",
+      "url": "https://aclanthology.org/2023.nlposs-1.19/",
+      "note": "Discusses features added to the Captum library (Captum v0.7) for language models."
+
+      }
+      ]
+},
+{
+  "name": "Saliency (Captum)",
+  "plugin_id": "captum_saliency_classifier",
+  "task_input": ["classification", "generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["transformer_general", "encoder", "NA"]
+  },
+  "target_scope": "local",
+  "granularity": ["token", "layer", "NA"],
+  "user_goal_audience": ["research_debug", "general_tooling"],
+  "fidelity": "low",
+  "format": ["visual_UI", "API_only", "notebook_viz"],
+  "description": {
+    "overview": "Saliency computes token importance using the gradient of the target class score with respect to the input embeddings. It’s fast and simple, but often noisier than baseline-based methods like Integrated Gradients.",
+    "main_functionalities": [
+      "Fast token-level sensitivity scores for a chosen class",
+      "No baseline required (single backward pass)",
+      "Useful for quick inspection / debugging loops"
+    ]
+  },
+  "strengths": [
+    "Very fast (typically a single forward+backward pass)",
+    "Good for rapid debugging: ‘which tokens is the logit most sensitive to?’",
+    "Simple to explain and easy to implement"
+  ],
+  "limitations": [
+    "Often noisy / unstable; may highlight spurious sensitivities",
+    "Can suffer from gradient saturation and discontinuities",
+    "Sensitivity ≠ importance: high gradient may not correspond to causal influence"
+  ],
+  "research_applications": [
+      {
+      "used_in": "Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps",
+      "type": "paper",
+      "year": 2014,
+      "source": "Workshop Track Proceedings of the 2nd International Conference on Learning Representations (ICLR 2014)",
+      "url": "https://arxiv.org/pdf/1312.6034",
+      "note": "Introduces the \"Saliency\" attribution method."
+      }, 
+       {
+      "used_in": "Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software (NLP-OSS 2023)",
+      "type": "paper",
+      "year": 2023,
+      "source": "NLP-OSS 2023",
+      "url": "https://aclanthology.org/2023.nlposs-1.19/",
+      "note": "Discusses features added to the Captum library (Captum v0.7) for language models."
+
+      }
+      ]
+},
+{
+  "name": "DeepLift (Captum)",
+  "plugin_id": "captum_deeplift_classifier",
+  "task_input": ["classification", "generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["transformer_general", "encoder", "NA"]
+  },
+  "target_scope": "local",
+  "description": {
+    "overview": "DeepLift attributes a target class score by comparing activations to a baseline and propagating contribution differences backward. In practice it can be sharper than plain gradients when gradients saturate, while remaining cheaper than high-step IG.",
+    "main_functionalities": [
+      "Baseline-based token attributions for a chosen class",
+      "Often better behaved than plain gradients under saturation",
+      "Useful alternative when IG is too slow or baseline sensitivity is acceptable"
+    ]
+  },
+  "strengths": [
+    "Baseline-based like IG, but often cheaper than high-step IG",
+    "Can handle some saturation cases better than raw gradients",
+    "Often yields clearer token attribution patterns than Saliency"
+  ],
+  "limitations": [
+    "Baseline choice matters (similar to IG)",
+    "Can behave unexpectedly depending on model components and non-linearities",
+    "Still not causal: attributions can be overridden/cancelled by downstream computations"
+  ],
+  "research_applications": [
+      {
+      "used_in": "Learning Important Features Through Propagating Activation Differences",
+      "type": "paper",
+      "year": 2017,
+      "source": "Proceedings of the 34th International Conference on Machine Learning (ICML 2017)",
+      "url": "https://proceedings.mlr.press/v70/shrikumar17a.html",
+      "note": "Introduces the \"DeepLift\" attribution method."
+      }, 
+       {
+      "used_in": "Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software (NLP-OSS 2023)",
+      "type": "paper",
+      "year": 2023,
+      "source": "NLP-OSS 2023",
+      "url": "https://aclanthology.org/2023.nlposs-1.19/",
+      "note": "Discusses features added to the Captum library (Captum v0.7) for language models."
+
+      }
+      ]
+}, 
+   {
+  "name": "Logit Lens",
+  "plugin_id": "logit_lens",
+  "task_input": ["generation", "seq2seq", "general_NLP", "NA"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder", "encdec", "transformer_general", "NA"]
+  },
+  "description": {
+    "overview": "A diagnostic technique that projects intermediate hidden states through the model’s unembedding (LM head) to see which vocabulary tokens each layer is ‘leaning toward’ predicting at a chosen position.",
+    "main_functionalities": [
+      "Layer-by-layer top-k token predictions for a chosen token position",
+      "Track a token’s score/probability across layers (e.g., final-layer top token)",
+      "Optional normalization choices to make intermediate-layer comparisons more meaningful (e.g., handling final LayerNorm)"
+    ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Interpreting GPT: the logit lens (original write-up / introduction)",
+      "type": "blog",
+      "year": 2020,
+      "source": "LessWrong",
+      "url": "https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens",
+      "note": "Introduces the basic idea: unembed intermediate residual stream states to inspect evolving token predictions."
+    },
+    {
+      "used_in": "A Mathematical Framework for Transformer Circuits",
+      "type": "article",
+      "year": 2021,
+      "source": "Transformer Circuits Thread",
+      "url": "https://transformer-circuits.pub/2021/framework/index.html",
+      "note": "Popularizes the residual-stream + unembedding viewpoint and the idea of interpreting intermediate states via logits."
+    },
+    {
+      "used_in": "Visualizing and Interpreting the Semantic Information Flow of Transformers (Findings of EMNLP 2023)",
+      "type": "paper",
+      "year": 2023,
+      "source": "ACL Anthology (PDF)",
+      "url": "https://aclanthology.org/2023.findings-emnlp.939.pdf",
+      "note": "Applies a logit-lens-style projection before/after LayerNorm to study information flow and component effects."
+    },
+    {
+      "used_in": "What Language Do Non-English-Centric Large Language Models Think In? (Findings of ACL 2025)",
+      "type": "paper",
+      "year": 2025,
+      "source": "ACL Anthology (PDF)",
+      "url": "https://aclanthology.org/2025.findings-acl.1350.pdf",
+      "note": "Uses logit lens as a measurement tool to detect latent language signals across layers."
+    }
+  ],
+  "strengths": [
+    "Fast and simple: a single forward pass can give layer-wise token tendencies",
+    "Great for mechanistic debugging: shows *when* a representation becomes linearly decodable into the final vocabulary space",
+    "Works naturally with decoder LMs (and often encoder-decoder) without needing perturbation sampling"
+  ],
+  "limitations": [
+    "Not causal: shows what is decodable via the unembedding, not what is necessary for the final prediction",
+    "LayerNorm / scaling matters: intermediate states may not be comparable to final-layer states without careful normalization",
+    "Top-k tokens can be misleading when probability mass is diffuse; consider adding entropy/margin diagnostics if you extend the UI"
+  ]
+}, 
+{
+  "name": "Direct Logit Attribution",
+  "plugin_id": "direct_logit_attribution",
+  "task_input": ["generation", "seq2seq", "general_NLP", "NA"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder", "encdec", "transformer_general", "NA"]
+  },
+  "description": {
+    "overview": "A diagnostic technique that attributes a chosen target token’s logit to internal transformer components by projecting each component’s output vector onto the target token’s unembedding direction (LM head). Positive contributions push the model toward the target token; negative contributions push it away.",
+    "main_functionalities": [
+      "Compute signed contributions of transformer components (e.g., per-layer attention output, per-layer MLP output) to a chosen target token logit at a chosen position",
+      "Rank components by absolute contribution for quick identification of which layers/components most strongly support or oppose a target prediction",
+      "Support both automatic target selection (model’s predicted next token) and manual target token selection (single-token string / token id)",
+      "Return JSON-friendly, human-readable outputs for UI tables/plots (component name, type, layer index, signed contribution, absolute share)"
+    ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Attribution Patching: Activation Patching At Industrial Scale",
+      "type": "blog",
+      "year": 2023,
+      "source": "neelnanda.io",
+      "url": "https://www.neelnanda.io/mechanistic-interpretability/attribution-patching",
+      "note": "Discusses direct logit attribution as a simple instance of (direct) path patching to logits: measuring the direct contribution of component outputs to logits."
+    },
+    {
+      "used_in": "TransformerLens documentation (ActivationCache.decompose_resid)",
+      "type": "documentation",
+      "year": 2023,
+      "source": "transformerlensorg.github.io",
+      "url": "https://transformerlensorg.github.io/TransformerLens/generated/code/transformer_lens.ActivationCache.html",
+      "note": "Provides tooling for decomposing the residual stream into component outputs, explicitly motivated by use-cases like direct logit attribution."
+    },
+    {
+      "used_in": "A Mathematical Framework for Transformer Circuits",
+      "type": "article",
+      "year": 2021,
+      "source": "Transformer Circuits Thread",
+      "url": "https://transformer-circuits.pub/2021/framework/index.html",
+      "note": "Popularizes the residual-stream-as-sum-of-components view, which motivates projecting component outputs into logit space to interpret which parts write evidence for a prediction."
+    },
+    {
+      "used_in": "An Adversarial Example for Direct Logit Attribution: Memory Management in GELU-4L",
+      "type": "paper",
+      "year": 2024,
+      "source": "arXiv",
+      "url": "https://arxiv.org/html/2310.07325v4",
+      "note": "Shows concrete cases where DLA can be misleading under erasure/cleanup (memory management), highlighting important failure modes."
+    },
+    {
+      "used_in": "An adversarial example for Direct Logit Attribution: memory management in gelu-4l",
+      "type": "blog",
+      "year": 2023,
+      "source": "AI Alignment Forum",
+      "url": "https://www.alignmentforum.org/posts/2PucFqdRyEvaHb4Hn/an-adversarial-example-for-direct-logit-attribution-memory",
+      "note": "Accessible write-up demonstrating how cleanup behavior can break naive DLA interpretations."
+    }
+  ],
+  "strengths": [
+    "Fast and simple: requires only one forward pass plus linear projections of component outputs into the unembedding direction",
+    "Highly interpretable sign: positive contributions provide direct evidence for the target token; negative contributions provide direct counter-evidence",
+    "Useful for locating the ‘end of a circuit’: quickly identifies which layers/components most directly write toward a specific token prediction",
+    "Works well as a companion to causal methods: DLA is a good first diagnostic before doing more expensive interventions (activation patching / path patching)"
+  ],
+  "limitations": [
+    "Not causal: a large positive contribution does not imply the component is necessary for the prediction (downstream components may override/cancel it)",
+    "Ignores softmax competition (attention-weight coupling) and other nonlinearities: the component output is treated as an additive vector even though it was produced by nonlinear computation",
+    "LayerNorm and scaling can matter: whether you project pre/post normalization affects interpretability; different architectures apply norms in different places",
+    "Can be misleading under ‘cleanup/erasure’ behavior where later components actively remove earlier-written directions from the residual stream"
+  ],
+  "recommended_ui_outputs": [
+    "Ranked table of components with signed contribution, absolute contribution, and percentage share of absolute contribution",
+    "Bar chart of contributions (signed) for the top-N components",
+    "Metadata panel: model name, inspected position, target token (id + pretty token), predicted next token, total target logit"
+  ],
+  "implementation_notes": [
+    "HF-native version typically attributes per-layer attention-module outputs and per-layer MLP-module outputs; per-head attribution requires deeper, architecture-specific hooks.",
+    "For manual target tokens, require that the provided string maps to exactly one token id (or accept token id directly) to avoid ambiguity."
+  ]
+}, 
+{
+  "name": "Anchors",
+  "plugin_id": "alibi_anchors_text",
+  "task_input": ["classification"],
+  "access_arch": {
+    "access": ["black_box"],
+    "arch": ["transformer_general"]
+  },
+  "description": {
+    "overview": "AnchorText is a local, model-agnostic explanation method that identifies a small set of words (an anchor) in a text such that, if those words are present, the model’s prediction is highly likely to remain the same. Rather than assigning numeric importance scores like SHAP, it produces IF-THEN style rules — showing combinations of features that reliably “anchor” a prediction under perturbations of the input.",
+    "main_functionalities": [
+      "Retrieves a set of words (‘anchor’) in text that ‘locks in’ the model’s prediction locally",
+      "Provides quantitative metrics — precision (reliability) and coverage (scope) — for the retrieved set of words",
+      "Works with any classifier without requiring access to model internals",
+      "Returns example texts where the anchor holds and where it fails for qualitative inspection"
+    ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Anchors: High-Precision Model-Agnostic Explanations",
+      "type": "paper",
+      "year": 2018,
+      "source": "AAAI",
+      "url": "https://homes.cs.washington.edu/~marcotcr/aaai18.pdf",
+      "note": "Original paper introducing the Anchors algorithm for model-agnostic explanations using high-precision local rules. Shows user studies where anchors allow users to predict model behavior with less effort than other explainers. :contentReference[oaicite:0]{index=0}"
+    },
+    {
+      "used_in": "A Sea of Words: An In-Depth Analysis of Anchors for Text Data",
+      "type": "paper",
+      "year": 2022,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2205.13789",
+      "note": "Analyzes the theoretical properties of Anchors specifically for text classifiers, showing how small sets of words can explain model decisions under different conditions. :contentReference[oaicite:1]{index=1}"
+    },
+    {
+      "used_in": "Understanding Post-hoc Explainers: The Case of Anchors",
+      "type": "paper",
+      "year": 2023,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2303.08806",
+      "note": "Provides theoretical and empirical analysis of the Anchors explainer and discusses strengths and limitations of the approach. :contentReference[oaicite:2]{index=2}"
+    },
+    {
+      "used_in": "Alibi Explain: Algorithms for Explaining ML Models",
+      "type": "paper",
+      "year": 2021,
+      "source": "JMLR Library",
+      "url": "https://jmlr.csail.mit.edu/papers/volume22/21-0017/21-0017.pdf",
+      "note": "Describes the Alibi library that implements AnchorText among other explainability methods for text, tabular, and image data. :contentReference[oaicite:3]{index=3}"
+    }
+  ],
+  "strengths": [
+    "Produces intuitive IF-THEN style explanations that are easy for humans to understand and communicate",
+    "Model-agnostic: works with black-box classifiers without needing gradients or internal architecture specifics",
+    "Quantifies reliability (precision) and breadth (coverage) of the explanation rule",
+    "Returns concrete example texts where the anchor holds and where it fails, aiding debugging and trust assessment"
+  ],
+  "limitations": [
+    "Focused on local explanations: does not provide a global summary of model behavior",
+    "Can be computationally heavy for long texts or strict precision thresholds due to sampling perturbations",
+      "Explanation quality depends on the perturbation strategy used to generate local text variants; heuristic replacements (e.g., the use of the UNK token) can produce unnatural or context-less sentences",   
+    "Explainer may return trivial anchors or none if the model behavior is diffuse (words are weakly predictive)"
+  ]
+},
+{
+  "name": "Sparse Autoencoders (SAELens + Neuronpedia)",
+  "plugin_id": "sae_feature_explorer",
+  "task_input": ["generation", "seq2seq", "general_NLP"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder", "encdec", "transformer_general"]
+  },
+  "target_scope": "both",
+  "description": {
+    "overview": "Sparse Autoencoders (SAEs) are used to discover interpretable features inside transformer latent representations. According to the superposition hypothesis, neural networks can represent more features than they have dimensions by encoding them sparsely, at the cost of interpretability. SAEs attempt to reverse this superposition by learning a new sparse basis of higher dimension over neuron activations, where each latent dimension ideally corresponds to a more monosemantic concept. ",
+    "main_functionalities": [
+    "Learn a sparse, overcomplete dictionary of latent features that reconstruct neural activations",
+    "Enable inspection of feature activations at specific token positions or contexts",
+    "Support downstream interpretability workflows such as feature visualization, steering, ablation, and attribution"
+  ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning",
+      "type": "paper",
+      "year": 2023,
+      "source": "Anthropic",
+      "url": "https://arxiv.org/abs/2306.09194",
+      "note": "Introduces large-scale sparse autoencoders for discovering monosemantic features in transformer activations."
+    },
+    {
+      "used_in": "Toy Models of Superposition",
+      "type": "paper",
+      "year": 2022,
+      "source": "Transformer Circuits",
+      "url": "https://transformer-circuits.pub/2022/toy_model/index.html",
+      "note": "Explains the superposition hypothesis and why sparse feature discovery is needed."
+    },
+    {
+      "used_in": "Scaling and Evaluating Sparse Autoencoders",
+      "type": "paper",
+      "year": 2024,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2406.04093",
+      "note": "Introduces top-k sparse autoencoders and analyzes scaling behavior and dead latents."
+    },
+    {
+      "used_in": "Improving Dictionary Learning with Gated Sparse Autoencoders",
+      "type": "paper",
+      "year": 2024,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2404.16014",
+      "note": "Proposes gated autoencoders that separate feature selection from feature magnitude to mitigate shrinkage bias."
+    },
+    {
+      "used_in": "Jumping Ahead: Improving Reconstruction Fidelity with JumpReLU Sparse Autoencoders",
+      "type": "paper",
+      "year": 2024,
+      "source": "arXiv",
+      "url": "https://arxiv.org/abs/2407.14435",
+      "note": "Introduces JumpReLU SAEs trained directly on an L0 objective using straight-through estimation."
+    },
+    {
+      "used_in": "SAELens",
+      "type": "documentation",
+      "year": 2024,
+      "source": "decoderesearch.github.io",
+      "url": "https://decoderesearch.github.io/SAELens/",
+      "note": "Library for loading and analyzing pretrained sparse autoencoders on TransformerLens models."
+    }
+  ],
+  "strengths": [
+    "Unsupervised feature discovery: does not require predefined concepts or labels",
+    "Often produces more monosemantic directions than raw neurons",
+    "Can be integreated in any model and in any layer",
+    "Enables advanced interventions (steering, ablation, attribution) using the discovered features"
+  ],
+  "limitations": [
+    "Feature meaning is not automatic: interpretation typically requires inspecting top-activating examples",
+    "There is no guarantee that features will be monosemantic. Features can still be polysemantic, especially in small or weakly sparse SAEs",
+    "Reconstruction–sparsity trade-off: stronger sparsity improves interpretability but may hurt reconstruction quality",
+    "Global analysis of a model requires large-scale activation datasets"
+  ]
+}, 
+{
+  "name": "Information Flow Routes (LLM Transparency Tool)",
+  "plugin_id": "meta_transparency_graph",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder", "encdec", "transformer_general"]
+  },
+  "target_scope": "both",
+  "description": {
+    "overview": "Information flow routes is a technique rooted in mechanistic interpretability research that, given a graph were nodes represent residual stream of tokens and edges computations, automatically identifies sparse computational subgraphs inside transformer models for specific predictions. Instead of using  expensive activation-patching interventions, the method computes edge attributions based on proximity to the sum of all edges pointing to a node  (residual stream).  By recursively pruning out low-contribution edges in a top-down manner, the information flow routes technique constructs a sparse directed graph representing the computational routes responsible for a prediction.",
+    "main_functionalities": [
+      "Efficiently compute attribution to intermediate transformer components using a single forward pass",
+      "Automatically build prediction-specific information-flow graphs highlighting the most important components for the prediction",
+      "Enable large-scale authomatic circuit discovery"
+    ]
+  },
+  "research_applications": [
+    {
+      "used_in": "Information flow routes: Automatically interpreting language models at scale",
+      "type": "paper",
+      "year": 2024,
+      "source": "Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing (EMNLP 2024)",
+      "url": "https://arxiv.org/abs/2404.07047",
+      "note": "Introduces the \"Information flow routes\" technique to automatically and efficientlyextract sparse computational circuits in large language models."
+    },
+    {
+      "used_in": "LM Transparency Tool: Interactive Tool for Analyzing Transformer Language Models",
+      "type": "demo paper",
+      "year": 2024,
+      "source": "Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL 2024)",
+      "url": "https://aclanthology.org/2024.acl-demos.6.pdf",
+      "note": "Presents the LM Transparency Tool (LM-TT), an open-source interactive toolkit for analyzing the internal workings of Transformer-based language models. This toolkit is based on the \"Information flow routes\" technique and provides a user-friendly interface for exploring the import computational routes responsible for specific predictions in language models."
+    }
+  ],
+  "strengths": [
+    "Enables simple and efficient attribution of model components", 
+    "Enables single-pass, scalable extraction of prediction-specific computational subgraphs without expensive patching",
+    "Unlike alternative patching-based circuit discovery methods, it does not require handcrafted corruption templates"
+  ],
+  "limitations": [
+    "The attribution of model components adopted by the method is correlational. It approximates causal influence and is not strictly interventional",
+    "Thresholding choices affect sparsity and graph structure",
+    "Greedy choices in extracting the subgraph given the attribution may lead to poor results"
+  ]
+}, 
+{
+  "name": "PCA Embedding Visualization",
+  "plugin_id": "embedding_pca_layers",
+  "task_input": ["generation", "classification"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder", "encdec"]
+  },
+  "target_scope": "local",
+  "description": {
+    "overview": "Projects token representations (input embeddings and hidden states) into 2D using Principal Component Analysis (PCA) to visualize the geometry of transformer representations across layers. Users can choose a single fixed PCA basis (for cross-layer comparison) or per-layer bases (for layer-local structure).",
+    "main_functionalities": [
+      "Token-level PCA projections for any model layer",
+      "Single-basis mode for cross-layer comparative visualization",
+      "Per-layer PCA mode for exploring layer-specific representational structure",
+      "Interactive layer selection and labeled scatter plots of tokens in PCA space"
+    ]
+  },
+  "strengths": [
+    "Provides intuitive visualization of representational geometry in high-dimensional spaces",
+    "Reveals layerwise evolution of token representations",
+    "Supports both fixed and per-layer PCA bases for flexible analysis"
+  ],
+  "limitations": [
+    "PCA captures only linear structure and may miss non-linear geometry",
+    "PCA of high-dimensional token embeddings misses a lot of important information and may destroy important semantic relationship",
+    "Visualization quality depends on token count and sentence length"
+  ],
+  "research_applications": [
+    {
+      "used_in": "Visualizing LLM Latent Space Geometry Through Dimensionality Reduction",
+      "type": "paper",
+      "year": 2025,
+      "source": "arXiv: Visualizing LLM Latent Space Geometry Through Dimensionality Reduction",
+      "url": "https://arxiv.org/abs/2511.21594",
+      "note": "Applies PCA (and UMAP) to analyze latent state geometries and layerwise evolution in transformer models."
+    },
+    {
+      "used_in": "Examining Structure of Word Embeddings with PCA",
+      "type": "paper",
+      "year": 2019,
+      "source": "International Conference of Text, Speech and Dialogue (TSD 2019)",
+      "url": "https://arxiv.org/abs/1906.00114",
+      "note": "Uses PCA to compare and interpret the geometric structure of word embeddings from different models."
+    },
+    {
+      "used_in": "Learned Transformer Position Embeddings Have a Low-Dimensional Structure",
+      "type": "paper",
+      "year": 2024,
+      "source": "Proceedings of the 9th Workshop on Representation Learning for NLP (RepL4NLP 2024)",
+      "url": "https://aclanthology.org/2024.repl4nlp-1.17.pdf",
+      "note": "Applies PCA to analyze the dimensionality and structure of positional and word embeddings in BERT models. They find that positional embeddings have a low-dimensional structure, using only about 10% of the available dimensions."
+    }
+  ]
+}
+  ]
+}
+
+
+
+
+

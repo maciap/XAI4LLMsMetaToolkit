@@ -1,5 +1,5 @@
 {
-  "toolkits": [
+  "methods": [
     {
       "name": "Integrated Gradients (Captum)",
       "plugin_id": "captum_ig_classifier",
