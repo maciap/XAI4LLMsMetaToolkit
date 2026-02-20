@@ -36,8 +36,10 @@ And we need two envioronments to handle conflicting dependenices. Martino uses a
 
 
 
-#### Currently supported plugins 
-* Attribution (Captum)
+#### Currently supported plugins
+* IG (Captum)
+* DeepLift (Captum)
+* Saliency (Captum)
 * Logit lens (mechanistic interpretability)
 * Direct Logit Attribution (mechanistic interpretability)
 * BertViz (visualization of attention patterns)
@@ -45,7 +47,8 @@ And we need two envioronments to handle conflicting dependenices. Martino uses a
 * Sparse Autoencoders (The coolest)
 * Integrated Gradients for Text Generation (Seq2Seq) in Encoder Decoder architecture (Inseq)
 * Integrated Gradients for Text Generation (Seq2Seq) in Decoder architecture (Inseq)
-* Information flow routes - LLM transparency tool (also very cool) 
+* Information flow routes - LLM transparency tool (also very cool)
+* PCA Embedding Vizualization (cool) 
 
 
 #### TODO 
