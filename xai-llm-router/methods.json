@@ -1133,6 +1133,60 @@
       "note": "Applies PCA to analyze the dimensionality and structure of positional and word embeddings in BERT models. They find that positional embeddings have a low-dimensional structure, using only about 10% of the available dimensions."
     }
     ] 
-    }
+    }, 
+    {
+  "name": "Linear CKA (layer similarity)",
+  "plugin_id": "linear_cka_layers",
+  "notes": "Representation similarity across layers using linear CKA.",
+  "task_input": ["general_NLP", "classification", "generation"],
+  "access_arch": { "access": "white_box", "arch": "transformer_general" },
+  "target_scope": "global",
+  "granularity": ["layer"],
+  "user_goal_audience": ["research_debug", "mech_interp", "model_eval"],
+  "fidelity": "mixed",
+  "format": ["visual_UI", "metrics"],
+  "description": {
+    "overview": "Computes a layer-by-layer linear CKA matrix to visualize representation similarity across transformer layers.",
+    "main_functionalities": [
+      "Extract hidden states for each layer",
+      "Compute linear CKA similarity matrix",
+      "Visualize similarities as a heatmap"
+    ]
+  },
+  "strengths": [
+    "Good for comparing how representations evolve across depth",
+    "Stable summary metric (compared to raw cosine on single tokens)"
+  ],
+  "limitations": [
+    "Single-input estimate can be noisy; best with multiple inputs",
+    "CKA depends on token sampling and preprocessing choices"
+  ],
+  "research_applications": [
+    {
+      "used_in": "Similarity of Neural Network Representations Revisited",
+      "type": "paper",
+      "year": 2019,
+      "source": "Proceedings of the 36 th International Conference on Machine Learning (ICML 2019)",
+      "url": "https://proceedings.mlr.press/v97/kornblith19a/kornblith19a.pdf",
+      "note": "Introduces the linear CKA measure for comparing neural network representations."
+    }, 
+    {
+    "used_in": "Fine-Tuned Transformers Show Clusters of Similar Representations Across Layers",
+    "type": "paper",
+    "year": 2021,
+    "source": "Proceedings of the Fourth BlackboxNLP Workshop on Analyzing and Interpreting Neural Networks for NLP",
+    "url": "https://aclanthology.org/2021.blackboxnlp-1.42.pdf",
+    "note": "Uses Centered Kernel Alignment (CKA) to measure representational similarity across layers in fine-tuned transformer models (e.g., RoBERTa, ALBERT)."
+  }, 
+  {
+  "used_in": "Ecco: An Open Source Library for the Explainability of Transformer Language Models",
+  "type": "paper",
+  "year": 2021,
+  "source": "Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing: System Demonstrations",
+  "url": "https://aclanthology.org/2021.acl-demo.30.pdf",
+  "note": "Introduces the Ecco toolkit for analyzing transformer language models. Includes implementation of CKA for comparing layer representations and studying representational similarity across model depth."
+}
+  ]
+}
   ]
 }

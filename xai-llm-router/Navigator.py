@@ -40,6 +40,7 @@ from pyvis.network import Network
 from toolkits.PCAViz import EmbeddingPCALayers
 import plotly.express as px
 import plotly.graph_objects as go
+from toolkits.linear_cka import LinearCKALayers
 
 
 
@@ -444,6 +445,8 @@ def get_plugins():
     plugin10 = CaptumSaliencyClassifierAttribution()
     plugin11 = CaptumDeepLiftClassifierAttribution()
     plugin12 = EmbeddingPCALayers()
+    plugin13 = LinearCKALayers()
+
 
 
     return {
@@ -458,7 +461,8 @@ def get_plugins():
         plugin9.id: plugin9,
         plugin10.id: plugin10,
         plugin11.id: plugin11, 
-        plugin12.id: plugin12
+        plugin12.id: plugin12, 
+        plugin13.id: plugin13
     }
 
 
@@ -1898,3 +1902,76 @@ with col_run:
                         f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_pca_layer_{layer_idx}_2d.png": fig
                     }
                     render_downloads(outputs, selected_item=selected_item, figs=figs_to_download)
+
+
+            elif outputs and outputs.get("plugin") == "linear_cka_layers" and outputs.get("cka_matrix"):
+            
+                st.subheader("Result")
+
+                with st.expander("ℹ️ How to read Linear CKA", expanded=True):
+                    st.write(
+                        "- **Linear CKA** measures similarity between two representation sets (here: token vectors) from different layers.\n"
+                        "- Values are in **[0, 1]** (higher = more similar).\n"
+                        "- We compute it using feature-centering and the linear CKA formula based on Frobenius norms.\n"
+                        "- Layer labels: **emb** = embedding output, **Lk** = transformer block k."
+                    )
+
+                st.write(f"**Model:** {outputs.get('model','NA')} (arch={outputs.get('arch_used','NA')})")
+                params = outputs.get("params", {}) or {}
+                st.caption(
+                    f"token_subset={params.get('token_subset','NA')} · "
+                    f"max_tokens_used={params.get('max_tokens_used','NA')} · "
+                    f"max_length={params.get('max_length','NA')} · "
+                    f"compute_on_cpu={params.get('compute_on_cpu','NA')}"
+                )
+
+                toks = outputs.get("tokens", []) or []
+                used = outputs.get("token_indices_used", []) or []
+                if toks and used:
+                    with st.expander("Token indices used (index:token)", expanded=False):
+                        st.code(" ".join([f"{i}:{toks[i]}" for i in used if 0 <= i < len(toks)]))
+
+                import numpy as np
+                import plotly.express as px
+                import matplotlib.pyplot as plt
+                import pandas as pd
+
+                M = np.array(outputs["cka_matrix"], dtype=float)
+                labels = outputs.get("layer_labels", [str(i) for i in range(M.shape[0])])
+
+                # Plotly interactive heatmap (VISIBLE)
+                fig = px.imshow(
+                    M,
+                    x=labels,
+                    y=labels,
+                    zmin=0.0,
+                    zmax=1.0,
+                    color_continuous_scale="viridis",
+                    aspect="auto",
+                    title="Linear CKA similarity across layers",
+                )
+                fig.update_layout(height=720, margin=dict(l=10, r=10, t=60, b=10))
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Tabular view
+                df = pd.DataFrame(M, index=labels, columns=labels)
+                with st.expander("Matrix values", expanded=False):
+                    st.dataframe(df, use_container_width=True)
+
+                # --- Hidden matplotlib heatmap (for download only) ---
+                fig2 = plt.figure()
+                plt.imshow(M, vmin=0.0, vmax=1.0, cmap="viridis")
+                plt.xticks(range(len(labels)), labels, rotation=45, ha="right")
+                plt.yticks(range(len(labels)), labels)
+                plt.title("Linear CKA similarity across layers")
+                plt.tight_layout()
+
+                # DO NOT call st.pyplot(fig2)  ← this removes the yellow display
+
+                render_downloads(
+                    outputs,
+                    selected_item=selected_item,
+                    figs={
+                        f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_cka_heatmap.png": fig2
+                    },
+                )
