@@ -915,26 +915,14 @@ def render_plugin_form(plugin):
 def _safe(s: str) -> str:
     return re.sub(r"[<>]", "", s or "")
 
-
 def _chip(text: str):
     st.markdown(
         f"""
-        <span style="
-            display:inline-block;
-            padding:0.22rem 0.60rem;
-            margin:0 0.35rem 0.35rem 0;
-            border-radius:999px;
-            border:1px solid #e6e8ec;
-            background:#ffffff;
-            color:#374151;
-            font-size:0.85rem;
-            line-height:1.2;">
-            {text}
-        </span>
+        <span class="xai-chip">{_safe(text)}</span>
         """,
         unsafe_allow_html=True,
     )
-
+    
 
 def render_selected_tool_card(selected_item: Dict[str, Any]):
     name = selected_item.get("name", "Selected tool")
@@ -956,7 +944,7 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
                 <div style="font-size:1.45rem; font-weight:700; margin-bottom:0.25rem;">
                  🛠️ {_safe(name)}
                 </div>
-                <div style="color:#6b7280; font-size:0.98rem; line-height:1.35;">
+                <div style="color: var(--text-color); font-size:0.98rem; line-height:1.35;">
                   {_safe(overview) if overview else _safe(notes)}
                 </div>
               </div>
@@ -1008,7 +996,7 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
                 st.markdown("**✅ Strengths**")
                 if strengths:
                     for x in strengths:
-                        st.markdown(f"<span style='color:#065f46'>• {x}</span>", unsafe_allow_html=True)
+                        st.markdown(f"<span style='color:var(--success-color)'>• {x}</span>", unsafe_allow_html=True)
                 else:
                     st.caption("—")
 
@@ -1059,32 +1047,75 @@ with col2:
     st.image("images/logo_app.png", width=220)
 
 
-st.markdown(
-    """
+st.markdown("""
 <style>
-.block-container { padding-top: 2rem; padding-bottom: 2rem; }
-h1, h2, h3 { font-weight: 600; letter-spacing: -0.2px; }
 
-/* base containers */
-div[data-testid="stContainer"] > div {
-  border-radius: 14px !important;
-  background-color: #f7f8fa !important;
-  border: 1px solid #e6e8ec !important;
-  padding: 1.2rem !important;
-  box-shadow: 0 1px 0 rgba(16,24,40,0.02);
+/* Use Streamlit theme variables */
+:root {
+  --radius: 16px;
 }
 
+/* Page spacing */
+.block-container {
+  padding-top: 1.6rem;
+  padding-bottom: 2rem;
+  max-width: 1250px;
+}
+
+/* Headings */
+h1, h2, h3 {
+  letter-spacing: -0.3px;
+}
+
+/* Cards */
+.xai-card {
+  border-radius: var(--radius);
+  background: var(--secondary-background-color);
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 1.2rem;
+}
+
+/* Expander styling */
 div[data-testid="stExpander"] > details {
-  border-radius: 14px !important;
-  border: 1px solid #e6e8ec !important;
-  background-color: #f7f8fa !important;
+  border-radius: var(--radius) !important;
+  background: var(--secondary-background-color) !important;
 }
 
-h4 { margin-top: 0.4rem; margin-bottom: 0.4rem; }
-</style>
-""",
-    unsafe_allow_html=True,
-)
+/* Buttons */
+.stButton button {
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Inputs */
+div[data-baseweb="select"] > div,
+.stTextInput input,
+.stTextArea textarea {
+  border-radius: 12px;
+}
+
+/* Make captions readable in dark mode */
+.stCaption {
+  color: var(--text-color) !important;
+  opacity: 0.7;
+}
+            
+.xai-chip {
+  display: inline-block;
+  padding: 0.22rem 0.65rem;
+  margin: 0 0.35rem 0.35rem 0;
+  border-radius: 999px;
+
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.25) !important;
+  color: #E5E7EB !important;
+
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+</style> 
+""", unsafe_allow_html=True)
 
 st.markdown(
     """
@@ -1097,7 +1128,7 @@ st.markdown(
 </h1>
 <p style="
     font-size: 1.1rem;
-    color: #6b7280;
+    color: var(--text-color);
     margin-top: 0;
 ">
     Discover the tools for explaining LLMs that fit your needs.
