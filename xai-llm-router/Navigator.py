@@ -42,7 +42,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from toolkits.linear_cka import LinearCKALayers
 
-
+from toolkits.cca_layers import CCALayers
 
 def captum_method_explainer_text(algo: str, params: Dict[str, Any]) -> str:
     algo = (algo or "").strip()
@@ -446,7 +446,7 @@ def get_plugins():
     plugin11 = CaptumDeepLiftClassifierAttribution()
     plugin12 = EmbeddingPCALayers()
     plugin13 = LinearCKALayers()
-
+    plugin14 = CCALayers()
 
 
     return {
@@ -462,7 +462,9 @@ def get_plugins():
         plugin10.id: plugin10,
         plugin11.id: plugin11, 
         plugin12.id: plugin12, 
-        plugin13.id: plugin13
+        plugin13.id: plugin13, 
+        plugin14.id: plugin14,
+
     }
 
 
@@ -483,12 +485,12 @@ DIM_VALUES = {
 }
 
 DEFAULTS = {
-    "task": "general_NLP",
+    "task": "NA",
     "access": "NA",
     "arch": "NA",
     "scope": "NA",
     "granularity": "NA",
-    "goal": "research_debug",
+    "goal": "NA",
     "fidelity": "NA",
     "format": "NA",
 }
@@ -1974,4 +1976,74 @@ with col_run:
                     figs={
                         f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_cka_heatmap.png": fig2
                     },
+                )
+
+            elif outputs and outputs.get("plugin") == "cca_layers" and outputs.get("cca_matrix"):
+                st.subheader("Result")
+
+                with st.expander("ℹ️ How to read CCA", expanded=True):
+                    st.write(
+                        "- **CCA** measures linear similarity between two representation sets (token vectors) from different layers.\n"
+                        "- Values are in **[0, 1]** (higher = more similar).\n"
+                        "- We compute it via Google's SVCCA `cca_core.get_cca_similarity` and return **mean canonical correlation**.\n"
+                        "- Because SVCCA-CCA requires `neurons < tokens`, we SVD-reduce the neuron dimension to `tokens-1` when needed.\n"
+                        "- Layer labels: **emb** = embedding output, **Lk** = transformer block k."
+                    )
+
+                st.write(f"**Model:** {outputs.get('model','NA')} (arch={outputs.get('arch_used','NA')})")
+                params = outputs.get("params", {}) or {}
+                st.caption(
+                    f"token_subset={params.get('token_subset','NA')} · "
+                    f"max_tokens_used={params.get('max_tokens_used','NA')} · "
+                    f"max_length={params.get('max_length','NA')} · "
+                    f"compute_on_cpu={params.get('compute_on_cpu','NA')} · "
+                    f"svd_reduce_to={params.get('svd_reduce_to','NA')} · "
+                    f"epsilon={params.get('epsilon','NA')}"
+                )
+
+                toks = outputs.get("tokens", []) or []
+                used = outputs.get("token_indices_used", []) or []
+                if toks and used:
+                    with st.expander("Token indices used (index:token)", expanded=False):
+                        st.code(" ".join([f"{i}:{toks[i]}" for i in used if 0 <= i < len(toks)]))
+
+                import numpy as np
+                import plotly.express as px
+                import matplotlib.pyplot as plt
+                import pandas as pd
+
+                M = np.array(outputs["cca_matrix"], dtype=float)
+                labels = outputs.get("layer_labels", [str(i) for i in range(M.shape[0])])
+
+                # Visible interactive heatmap
+                fig = px.imshow(
+                    M,
+                    x=labels,
+                    y=labels,
+                    zmin=0.0,
+                    zmax=1.0,
+                    color_continuous_scale="viridis",
+                    aspect="auto",
+                    title="CCA similarity across layers (mean canonical correlation)",
+                )
+                fig.update_layout(height=720, margin=dict(l=10, r=10, t=60, b=10))
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Values table
+                df = pd.DataFrame(M, index=labels, columns=labels)
+                with st.expander("Matrix values", expanded=False):
+                    st.dataframe(df, use_container_width=True)
+
+                # Download-only matplotlib heatmap
+                fig2 = plt.figure()
+                plt.imshow(M, vmin=0.0, vmax=1.0, cmap="viridis")
+                plt.xticks(range(len(labels)), labels, rotation=45, ha="right")
+                plt.yticks(range(len(labels)), labels)
+                plt.title("CCA similarity across layers")
+                plt.tight_layout()
+
+                render_downloads(
+                    outputs,
+                    selected_item=selected_item,
+                    figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_cca_heatmap.png": fig2},
                 )

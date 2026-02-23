@@ -1187,6 +1187,87 @@
   "note": "Introduces the Ecco toolkit for analyzing transformer language models. Includes implementation of CKA for comparing layer representations and studying representational similarity across model depth."
 }
   ]
+}, 
+{
+  "name": "CCA (layer similarity)",
+  "plugin_id": "cca_layers",
+  "notes": "Representation similarity across transformer layers using Canonical Correlation Analysis (CCA) via SVCCA-lib.",
+  "task_input": ["classification", "generation"],
+  "access_arch": { "access": "white_box", "arch": "transformer_general" },
+  "target_scope": "global",
+  "description": {
+    "overview": "Computes a layer-by-layer similarity matrix using Canonical Correlation Analysis (CCA) to compare hidden representations across transformer layers.",
+    "main_functionalities": [
+      "Extract hidden states for each transformer layer",
+      "Compute mean canonical correlation between layer representations",
+      "Visualize layer similarity matrix as a heatmap"
+    ]
+  },
+  "strengths": [
+    "Invariant to linear transformations of representation space",
+    "Widely used in representation analysis research"
+  ],
+  "limitations": [
+    "Can be numerically unstable without regularization"
+  ],
+  "research_applications": [
+    {
+      "used_in": "Canonical Correlation Analysis",
+      "type": "paper",
+      "year": 1936,
+      "source": "Biometrika",
+      "url": "https://www.jstor.org/stable/2333955",
+      "note": "Original introduction of Canonical Correlation Analysis by Hotelling."
+    },
+    {
+      "used_in": "SVCCA: Singular Vector Canonical Correlation Analysis for Deep Learning Dynamics and Interpretability",
+      "type": "paper",
+      "year": 2017,
+      "source": "NeurIPS 2017",
+      "url": "https://arxiv.org/abs/1706.05806",
+      "note": "Introduces SVCCA for analyzing representations in deep neural networks; foundational for representation similarity analysis in modern deep models."
+    },
+    {
+      "used_in": "Insights on Representational Similarity in Neural Networks with Canonical Correlation",
+      "type": "paper",
+      "year": 2018,
+      "source": "NeurIPS 2018",
+      "url": "https://arxiv.org/abs/1806.05759",
+      "note": "Introduces Projection-Weighted CCA (PWCCA) and further analyzes representation similarity in deep networks."
+    },
+    {
+      "used_in": "BERT is Not an Interlingua and the Bias of Tokenization",
+      "type": "paper",
+      "year": 2019,
+      "source": "ACL 2019",
+      "url": "https://aclanthology.org/D19-6106.pdf",
+      "note": "Uses Canonical Correlation Analysis (CCA) to find that pretrained multilingual BERT does not learn a unified interlingual representation space. Instead, it partitions its internal representations by language."
+    },
+    {
+      "used_in": "The Bottom-up Evolution of Representations in the Transformer: A Study with Machine Translation and Language Modeling Objectives",
+      "type": "paper",
+      "year": 2019,
+      "source": "Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)",
+      "url": "https://aclanthology.org/D19-1448.pdf",
+      "note": "Uses canonical correlation analysis to investigate how information flows across transformer layers and how the flow hinges on the objective adopted for learning."
+    }, 
+    {
+      "used_in": "Similarity Analysis of Contextual Word Representation Models",
+      "type": "paper",
+      "year": 2020,
+      "source": "Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics",
+      "url": "https://aclanthology.org/2020.acl-main.422.pdf",
+      "note": "Uses canonical correlation analysis to measure the similarity between different latent representations."
+    },
+    {
+      "used_in": "Ecco: An Open Source Library for the Explainability of Transformer Language Models",
+      "type": "paper",
+      "year": 2021,
+      "source": "ACL 2021 System Demonstrations",
+      "url": "https://aclanthology.org/2021.acl-demo.30.pdf",
+      "note": "Introduces the Ecco toolkit for analyzing transformer language models. Implements CCA and SVCCA to study representational similarity across layers."
+    }
+  ]
 }
   ]
 }
