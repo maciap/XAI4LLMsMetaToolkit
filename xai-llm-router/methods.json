@@ -1318,64 +1318,139 @@
       "typical_cost": "medium"
     }, 
     {
-      "name": "Integrated Gradients - Decoder Only (Inseq)",
-      "plugin_id": "inseq_decoder_ig",
-      "task_input": [
-        "generation"
-      ],
-      "access_arch": {
-        "access": [
-          "mixed"
-        ],
-        "arch": [
-          "decoder"
-        ]
-      },
-      "target_scope": "local",
-      "granularity": [
-        "token"
-      ],
-      "user_goal_audience": [
-        "research_debug",
-        "general_tooling"
-      ],
-      "fidelity": "mixed",
-      "format": [
-        "API_only",
-        "notebook_viz"
-      ],
-      "notes": "Builds on Captum for attribution in generation; target sequence or generated sequence; includes discretized IG and attention-based attribution."
+  "name": "Integrated Gradients - Decoder Only (Inseq)",
+  "plugin_id": "inseq_decoder_ig",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder"]
+  },
+  "accessibility":"non experts", 
+  "target_scope": "local",
+  "description": {
+    "overview": "Integrated Gradients (IG) attributes a decoder-only language model’s generated tokens to its input tokens by integrating gradients along a path from a baseline to the actual input. Implemented via Inseq, it produces token-level attribution scores explaining next-token predictions.",
+    "main_functionalities": [
+      "Compute token-level importance scores for generated tokens",
+      "Support configurable baselines and integration steps",
+      "Visualize attribution scores as interactive HTML heatmaps",
+      "Work with Hugging Face-compatible decoder-only models (e.g., GPT-style models)"
+    ]
+  },
+  "strengths": [
+    "Faithful gradient-based attribution satisfying sensitivity and implementation invariance",
+    "Prediction-specific explanations (local interpretability)",
+    "More stable than raw gradient saliency",
+    "Integrates seamlessly with generation workflows"
+  ],
+  "limitations": [
+    "Requires white-box access to model gradients",
+    "Choice of baseline can significantly affect results",
+    "Computationally expensive for long sequences or many integration steps",
+    "Attributions remain correlational, not strictly causal"
+  ],
+  "research_applications": [
+    {
+      "used_in": "Axiomatic Attribution for Deep Networks",
+      "type": "paper",
+      "year": 2017,
+      "source": "ICML",
+      "url": "https://arxiv.org/abs/1703.01365",
+      "note": "Introduces Integrated Gradients."
     },
     {
-      "name": "Integrated Gradients - EncoderDecoder (Inseq)",
-      "plugin_id": "inseq_encdec_ig",
-      "task_input": [
-        "seq2seq"
-      ],
-      "access_arch": {
-        "access": [
-          "mixed"
-        ],
-        "arch": [
-          "encdec"
-        ]
-      },
-      "target_scope": "local",
-      "granularity": [
-        "token"
-      ],
-      "user_goal_audience": [
-        "research_debug",
-        "general_tooling"
-      ],
-      "fidelity": "mixed",
-      "format": [
-        "API_only",
-        "notebook_viz"
-      ],
-      "notes": "Builds on Captum for attribution in generation; target sequence or generated sequence; includes discretized IG and attention-based attribution."
+      "used_in": "Inseq: An Interpretability Toolkit for Sequence Generation Models",
+      "type": "paper",
+      "year": 2023,
+      "source": "ACL Demo",
+      "url": "https://aclanthology.org/2023.acl-demo.40/",
+      "note": "Presents Inseq for attribution in generative language models which implements the Integrated Gradients method for sequence to sequence."
+    }
+  ],
+  "typical_cost": "medium-high"
+},
+{
+  "name": "Integrated Gradients - EncoderDecoder (Inseq)",
+  "plugin_id": "inseq_encdec_ig",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["mixed"],
+    "arch": ["encdec"]
+  },
+  "accessibility":"non experts", 
+  "target_scope": "local",
+  "description": {
+    "overview": "Integrated Gradients (IG) for encoder–decoder models attributes generated target tokens to both source input tokens and decoder states. Using Inseq, it provides fine-grained token-level explanations for sequence-to-sequence predictions such as translation or summarization.",
+    "main_functionalities": [
+      "Attribute decoder outputs to encoder inputs and decoder context",
+      "Support encoder–decoder architectures (e.g., T5, BART)",
+      "Provide token-level attribution matrices",
+      "Enable visualization of cross-sequence attribution patterns"
+    ]
+  },
+  "strengths": [
+    "Captures cross-attention contributions between source and target sequences",
+    "Faithful gradient-based attribution method",
+    "Applicable to diverse seq2seq tasks (translation, summarization, QA)",
+    "Interactive visualization support via Inseq"
+  ],
+  "limitations": [
+    "Higher computational cost due to encoder + decoder passes",
+    "Baseline choice affects attribution quality",
+    "Requires gradient access (white-box or partial white-box)",
+    "Interpretation can be harder due to bidirectional information flow"
+  ],
+  "research_applications": [
+    {
+      "used_in": "A Unified Framework for Gradient-based Attribution Methods",
+      "type": "paper",
+      "year": 2017,
+      "source": "ICML",
+      "url": "https://arxiv.org/abs/1703.01365",
+      "note": "Introduces Integrated Gradients."
     },
     {
+      "used_in": "Inseq: An Interpretability Toolkit for Sequence Generation Models",
+      "type": "paper",
+      "year": 2023,
+      "source": "ACL Demo",
+      "url": "https://aclanthology.org/2023.acl-demo.40/",
+      "note": "Demonstrates attribution methods for encoder–decoder models."
+    }
+  ],
+  "typical_cost": "high"
+},
+{
+  "name": "Discretized Integrated Gradients - Decoder (Inseq)",
+  "plugin_id": "inseq_decoder_discretized_ig",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder"]
+  },
+  "accessibility":"non experts",
+  "target_scope": "local",
+  "description": {
+    "overview": "Discretized Integrated Gradients approximates the IG path integral in embedding space for decoder-only language models. It attributes generated tokens to input tokens by accumulating gradients across interpolation steps.",
+    "main_functionalities": [
+      "Token-level attribution for next-token prediction",
+      "Configurable number of integration steps",
+      "Baseline selection support",
+      "Interactive visualization of attribution heatmaps"
+    ]
+  },
+  "strengths": [
+    "More stable than raw gradients",
+    "Satisfies sensitivity and implementation invariance",
+    "Prediction-specific explanations"
+  ],
+  "limitations": [
+    "Baseline choice influences results",
+    "Computational cost scales with integration steps",
+    "Gradient access required"
+  ],
+  "typical_cost": "medium-high"
+},
+{
   "name": "PCA Embedding Visualization",
   "plugin_id": "embedding_pca_layers",
   "task_input": ["generation", "classification"],
@@ -1430,6 +1505,260 @@
     }
     ] 
     }, 
+{
+  "name": "GradientSHAP - Decoder (Inseq)",
+  "plugin_id": "inseq_decoder_gradient_shap",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder"]
+  },
+  "accessibility":"non experts",
+  "target_scope": "local",
+  "description": {
+    "overview": "GradientSHAP combines Integrated Gradients with noise sampling to approximate Shapley values for decoder-only language models.",
+    "main_functionalities": [
+      "Monte Carlo sampling over noisy baselines",
+      "Approximate Shapley-style token attribution",
+      "Token-level importance visualization"
+    ]
+  },
+  "strengths": [
+    "Theoretically connected to Shapley values",
+    "More robust than single-baseline IG",
+    "Handles gradient saturation better than raw gradients"
+  ],
+  "limitations": [
+    "Higher variance due to sampling",
+    "Computationally expensive",
+    "Requires gradient access"
+  ],
+  "typical_cost": "high"
+},
+{
+  "name": "DeepLIFT - Decoder (Inseq)",
+  "plugin_id": "inseq_decoder_deeplift",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder"]
+  },
+  "target_scope": "local",
+  "description": {
+    "overview": "DeepLIFT attributes output differences to input tokens by comparing activations to a reference baseline and propagating contribution scores backward through the model.",
+    "main_functionalities": [
+      "Reference-based contribution propagation",
+      "Handles gradient saturation better than IG",
+      "Token-level attribution scores"
+    ]
+  },
+  "strengths": [
+    "Computationally cheaper than multi-step IG",
+    "Less sensitive to gradient saturation",
+    "Clear reference-based interpretation"
+  ],
+  "limitations": [
+    "Depends strongly on baseline choice",
+    "May violate implementation invariance",
+    "Requires white-box access"
+  ],
+  "typical_cost": "medium"
+},
+{
+  "name": "Input × Gradient - Decoder (Inseq)",
+  "plugin_id": "inseq_decoder_input_x_gradient",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["decoder"]
+  },
+  "target_scope": "local",
+  "description": {
+    "overview": "Input × Gradient multiplies input embeddings by their gradients to estimate token importance for decoder-only language models.",
+    "main_functionalities": [
+      "Single backward pass attribution",
+      "Token-level importance estimation",
+      "Fast computation"
+    ]
+  },
+  "strengths": [
+    "Very fast (single gradient pass)",
+    "Simple to interpret",
+    "Low computational overhead"
+  ],
+  "limitations": [
+    "Noisy and unstable",
+    "Sensitive to gradient saturation",
+    "Purely local linear approximation"
+  ],
+  "typical_cost": "low"
+}, 
+{
+  "name": "LIME - Decoder (Inseq)",
+  "plugin_id": "inseq_decoder_lime",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["black_box"],
+    "arch": ["decoder"]
+  }, 
+  "target_scope": "local",
+  "accessibility":"non experts",
+  "description": {
+    "overview": "LIME approximates a local linear surrogate model around a prediction by perturbing input tokens and observing changes in generated outputs.",
+    "main_functionalities": [
+      "Perturbation-based token attribution",
+      "Model-agnostic explanation",
+      "Local surrogate modeling"
+    ]
+  },
+  "strengths": [
+    "Does not require gradient access",
+    "Model-agnostic",
+    "Intuitive local linear approximation"
+  ],
+  "limitations": [
+    "Sampling-based and potentially unstable",
+    "Computationally expensive for long sequences",
+    "Faithfulness depends on perturbation strategy"
+  ],
+   "research_applications": [
+    {
+      "used_in": "Why Should I Trust You? Explaining the Predictions of Any Classifier",
+      "type": "paper",
+      "year": 2016,
+      "source": "Proceedings of Knowledge Discovery in Databases (KDD)",
+      "url": "https://arxiv.org/abs/1602.04938",
+      "note": "Original LIME paper introducing local surrogate explanations."
+    },
+    {
+      "used_in": "Inseq: An Interpretability Toolkit for Sequence Generation Models",
+      "type": "paper",
+      "year": 2023,
+      "source": "ACL Demo",
+      "url": "https://aclanthology.org/2023.acl-demo.40/",
+      "note": "Demonstrates LIME-style attribution for generative language models."
+    }
+  ],
+  "typical_cost": "high"
+}, 
+{
+  "name": "GradientSHAP - EncoderDecoder (Inseq)",
+  "plugin_id": "inseq_encdec_gradient_shap",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["encdec"]
+  },
+  "accessibility":"non experts",
+  "target_scope": "local",
+  "description": {
+    "overview": "GradientSHAP combines Integrated Gradients with noise sampling to approximate Shapley values for encoder-decoder language models.",
+    "main_functionalities": [
+      "Monte Carlo sampling over noisy baselines",
+      "Approximate Shapley-style token attribution",
+      "Token-level importance visualization"
+    ]
+  },
+  "strengths": [
+    "Theoretically connected to Shapley values",
+    "More robust than single-baseline IG",
+    "Handles gradient saturation better than raw gradients"
+  ],
+  "limitations": [
+    "Higher variance due to sampling",
+    "Computationally expensive",
+    "Requires gradient access"
+  ],
+  "typical_cost": "high"
+},
+{
+  "name": "DeepLIFT - EncoderDecoder (Inseq)",
+  "plugin_id": "inseq_encdec_deeplift",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["encdec"]
+  },
+  "target_scope": "local",
+  "description": {
+    "overview": "DeepLIFT attributes output differences to input tokens by comparing activations to a reference baseline and propagating contribution scores backward through the model.",
+    "main_functionalities": [
+      "Reference-based contribution propagation",
+      "Handles gradient saturation better than IG",
+      "Token-level attribution scores"
+    ]
+  },
+  "strengths": [
+    "Computationally cheaper than multi-step IG",
+    "Less sensitive to gradient saturation",
+    "Clear reference-based interpretation"
+  ],
+  "limitations": [
+    "Depends strongly on baseline choice",
+    "May violate implementation invariance",
+    "Requires white-box access"
+  ],
+  "typical_cost": "medium"
+},
+{
+  "name": "Input × Gradient - EncoderDecoder (Inseq)",
+  "plugin_id": "inseq_encdec_input_x_gradient",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["encdec"]
+  },
+  "target_scope": "local",
+  "description": {
+    "overview": "Input × Gradient multiplies input embeddings by their gradients to estimate token importance for encoder-decoder language models.",
+    "main_functionalities": [
+      "Single backward pass attribution",
+      "Token-level importance estimation",
+      "Fast computation"
+    ]
+  },
+  "strengths": [
+    "Very fast (single gradient pass)",
+    "Simple to interpret",
+    "Low computational overhead"
+  ],
+  "limitations": [
+    "Noisy and unstable",
+    "Sensitive to gradient saturation",
+    "Purely local linear approximation"
+  ],
+  "typical_cost": "low"
+}, 
+{
+  "name": "LIME - EncoderDecoder (Inseq)",
+  "plugin_id": "inseq_decoder_lime",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["black_box"],
+    "arch": ["encdec"]
+  },
+  "target_scope": "local",
+  "accessibility":"non experts",
+  "description": {
+    "overview": "LIME approximates a local linear surrogate model around a prediction by perturbing input tokens and observing changes in generated outputs.",
+    "main_functionalities": [
+      "Perturbation-based token attribution",
+      "Model-agnostic explanation",
+      "Local surrogate modeling"
+    ]
+  },
+  "strengths": [
+    "Does not require gradient access",
+    "Model-agnostic",
+    "Intuitive local linear approximation"
+  ],
+  "limitations": [
+    "Sampling-based and potentially unstable",
+    "Computationally expensive for long sequences",
+    "Faithfulness depends on perturbation strategy"
+  ],
+  "typical_cost": "high"
+   }, 
     {
   "name": "Linear CKA (layer similarity)",
   "plugin_id": "linear_cka_layers",
