@@ -29,8 +29,14 @@ from toolkits.direct_logit_attribution import DirectLogitAttribution
 from toolkits.sae_feature_explorer import SAEFeatureExplorer
 import torch  # safe local import for cuda check
 import streamlit.components.v1 as components
-from toolkits.inseq_proxy_http import InseqDecoderIG_HTTP, InseqEncDecIG_HTTP
-
+from toolkits.inseq_proxy_http import (
+    InseqDecoderIG_HTTP, InseqEncDecIG_HTTP,
+    InseqDecoderGradientSHAP_HTTP, InseqEncDecGradientSHAP_HTTP,
+    InseqDecoderDeepLIFT_HTTP, InseqEncDecDeepLIFT_HTTP,
+    InseqDecoderInputXGradient_HTTP, InseqEncDecInputXGradient_HTTP,
+    InseqDecoderLIME_HTTP, InseqEncDecLIME_HTTP,
+    InseqDecoderDiscretizedIG_HTTP, InseqEncDecDiscretizedIG_HTTP
+)
 from toolkits.meta_transparency import MetaTransparencyGraph  # adjust import path
 
 import tempfile
@@ -43,6 +49,7 @@ import plotly.graph_objects as go
 from toolkits.linear_cka import LinearCKALayers
 
 from toolkits.cca_layers import CCALayers
+
 
 def captum_method_explainer_text(algo: str, params: Dict[str, Any]) -> str:
     algo = (algo or "").strip()
@@ -431,6 +438,7 @@ import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 print(os.getcwd())
 
+
 @st.cache_resource
 def get_plugins():
     plugin1 = CaptumIGClassifierAttribution()
@@ -439,8 +447,28 @@ def get_plugins():
     plugin4 = AlibiAnchorsText()
     plugin5 = DirectLogitAttribution()
     plugin6 = SAEFeatureExplorer()
+
+    # --- Inseq (existing IG) ---
     plugin7 = InseqDecoderIG_HTTP()
     plugin8 = InseqEncDecIG_HTTP()
+
+    # --- Inseq new methods ---
+    plugin15 = InseqDecoderGradientSHAP_HTTP()
+    plugin16 = InseqEncDecGradientSHAP_HTTP()
+
+    plugin17 = InseqDecoderDeepLIFT_HTTP()
+    plugin18 = InseqEncDecDeepLIFT_HTTP()
+
+    plugin19 = InseqDecoderInputXGradient_HTTP()
+    plugin20 = InseqEncDecInputXGradient_HTTP()
+
+    plugin21 = InseqDecoderLIME_HTTP()
+    plugin22 = InseqEncDecLIME_HTTP()
+
+    plugin23 = InseqDecoderDiscretizedIG_HTTP()
+    plugin24 = InseqEncDecDiscretizedIG_HTTP()
+
+    # --- Others ---
     plugin9 = MetaTransparencyGraph()
     plugin10 = CaptumSaliencyClassifierAttribution()
     plugin11 = CaptumDeepLiftClassifierAttribution()
@@ -448,6 +476,7 @@ def get_plugins():
     plugin13 = LinearCKALayers()
     plugin14 = CCALayers()
 
+    
 
     return {
         plugin1.id: plugin1,
@@ -456,16 +485,28 @@ def get_plugins():
         plugin4.id: plugin4,
         plugin5.id: plugin5,
         plugin6.id: plugin6,
+
+        # Inseq
         plugin7.id: plugin7,
         plugin8.id: plugin8,
+        plugin15.id: plugin15,
+        plugin16.id: plugin16,
+        plugin17.id: plugin17,
+        plugin18.id: plugin18,
+        plugin19.id: plugin19,
+        plugin20.id: plugin20,
+        plugin21.id: plugin21,
+        plugin22.id: plugin22,
+
         plugin9.id: plugin9,
         plugin10.id: plugin10,
-        plugin11.id: plugin11, 
-        plugin12.id: plugin12, 
-        plugin13.id: plugin13, 
+        plugin11.id: plugin11,
+        plugin12.id: plugin12,
+        plugin13.id: plugin13,
         plugin14.id: plugin14,
-
     }
+
+
 
 
 PLUGINS = get_plugins()
@@ -1719,7 +1760,7 @@ with col_run:
 
 
 
-            elif outputs and outputs.get("plugin") in ("inseq_decoder_ig", "inseq_encdec_ig") and outputs.get("out"):
+            elif outputs and str(outputs.get("plugin","")).startswith("inseq_") and outputs.get("out"):
                 import re 
 
                 def inseq_html_dark_fix(html: str) -> str:

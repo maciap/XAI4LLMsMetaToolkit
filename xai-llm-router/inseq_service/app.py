@@ -1,6 +1,7 @@
+# inseq_service/app.py
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Any, Dict
+from typing import Any, Dict, Type
 
 app = FastAPI(title="Inseq Service")
 
@@ -15,17 +16,35 @@ def health():
 @app.post("/run")
 def run(req: RunReq):
     try:
-        # Import the real plugins only in the xai-inseq env
-        from toolkits.inseq import InseqDecoderIG, InseqEncDecIG
+        from toolkits.inseq import (
+            InseqDecoderIG, InseqEncDecIG,
+            InseqDecoderGradientSHAP, InseqEncDecGradientSHAP,
+            InseqDecoderDeepLIFT, InseqEncDecDeepLIFT,
+            InseqDecoderInputXGradient, InseqEncDecInputXGradient,
+            InseqDecoderLIME, InseqEncDecLIME,
+            InseqDecoderDiscretizedIG, InseqEncDecDiscretizedIG
+        )
 
-        if req.plugin == "inseq_decoder_ig":
-            plugin = InseqDecoderIG()
-        elif req.plugin == "inseq_encdec_ig":
-            plugin = InseqEncDecIG()
-        else:
-            raise ValueError(f"Unknown plugin: {req.plugin}")
+        REGISTRY: Dict[str, Type] = {
+            "inseq_decoder_ig": InseqDecoderIG,
+            "inseq_encdec_ig": InseqEncDecIG,
+            "inseq_decoder_gradient_shap": InseqDecoderGradientSHAP,
+            "inseq_encdec_gradient_shap": InseqEncDecGradientSHAP,
+            "inseq_decoder_deeplift": InseqDecoderDeepLIFT,
+            "inseq_encdec_deeplift": InseqEncDecDeepLIFT,
+            "inseq_decoder_input_x_gradient": InseqDecoderInputXGradient,
+            "inseq_encdec_input_x_gradient": InseqEncDecInputXGradient,
+            "inseq_decoder_lime": InseqDecoderLIME,
+            "inseq_encdec_lime": InseqEncDecLIME,
+            "inseq_decoder_discretized_ig": InseqDecoderDiscretizedIG,
+            "inseq_encdec_discretized_ig": InseqEncDecDiscretizedIG,
+        }
 
-        return plugin.run(req.inputs)
+        cls = REGISTRY.get(req.plugin)
+        if cls is None:
+            raise ValueError(f"Unknown plugin: {req.plugin}. Known: {sorted(REGISTRY.keys())}")
+
+        return cls().run(req.inputs)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

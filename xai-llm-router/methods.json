@@ -1451,6 +1451,37 @@
   "typical_cost": "medium-high"
 },
 {
+  "name": "Discretized Integrated Gradients - EncoderDecoder (Inseq)",
+  "plugin_id": "inseq_encdec_discretized_ig",
+  "task_input": ["generation"],
+  "access_arch": {
+    "access": ["white_box"],
+    "arch": ["encdec"]
+  },
+  "accessibility":"non experts",
+  "target_scope": "local",
+  "description": {
+    "overview": "Discretized Integrated Gradients approximates the IG path integral in embedding space for encoder-decoder language models. It attributes generated tokens to input tokens by accumulating gradients across interpolation steps.",
+    "main_functionalities": [
+      "Token-level attribution for next-token prediction",
+      "Configurable number of integration steps",
+      "Baseline selection support",
+      "Interactive visualization of attribution heatmaps"
+    ]
+  },
+  "strengths": [
+    "More stable than raw gradients",
+    "Satisfies sensitivity and implementation invariance",
+    "Prediction-specific explanations"
+  ],
+  "limitations": [
+    "Baseline choice influences results",
+    "Computational cost scales with integration steps",
+    "Gradient access required"
+  ],
+  "typical_cost": "medium-high"
+},
+{
   "name": "PCA Embedding Visualization",
   "plugin_id": "embedding_pca_layers",
   "task_input": ["generation", "classification"],
@@ -1731,7 +1762,7 @@
 }, 
 {
   "name": "LIME - EncoderDecoder (Inseq)",
-  "plugin_id": "inseq_decoder_lime",
+  "plugin_id": "inseq_encdec_lime",
   "task_input": ["generation"],
   "access_arch": {
     "access": ["black_box"],
