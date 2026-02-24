@@ -1,11 +1,12 @@
 {
   "toolkits": [
     {
-      "name": "Integrated Gradients (Captum)",
+      "name": "Integrated Gradients (IG)",
       "plugin_id": "captum_ig_classifier",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
+      "accessibility": "non experts", 
       "description": {
         "overview": "Integrated Gradients (IG) attributes a model’s prediction to input tokens by integrating gradients along a path from a baseline to the actual input. It produces per-token attributions for the target output.",
         "main_functionalities": [
@@ -40,15 +41,32 @@
           "source": "Facebook AI Research",
           "url": "https://captum.ai/api/integrated_gradients.html",
           "note": "Details the Integrated Gradients implementation in Captum."
+        }, 
+        {
+          "used_in": "ferret: a Framework for Benchmarking Explainers on Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics: System Demonstrations",
+          "url": "https://dl.acm.org/doi/10.1145/2939672.2939778",
+          "note": "Introduces the ferret toolkit which leverages feature attribution approaches like Integrated Gradients to support the interpretation of individual model predictions."
+        }, 
+        {
+          "used_in": "The Language Interpretability Tool: Extensible, Interactive Visualizations and Analysis for {NLP} Models",
+          "type": "paper",
+          "year": 2020,
+          "source": "Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations (EMNLP)",
+          "url": "https://doi.org/10.18653/v1/2020.emnlp-demos.15",
+          "note": "Introduces the LIT toolkit which implements Integrated Gradients."
         }
       ],
-      "typical_cost": "high"
+      "typical_cost": "medium"
     },
     {
-      "name": "Layer Integrated Gradients (Captum)",
+      "name": "Layer Conductance",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
+      "accessibility": "mid experts",
       "description": {
         "overview": "Layer Integrated Gradients applies the IG approach to internal model layers instead of inputs. It attributes importance to activations of a chosen intermediate layer.",
         "main_functionalities": [
@@ -71,11 +89,39 @@
       "typical_cost": "high"
     },
     {
-      "name": "Saliency (Captum)",
+      "name": "Layer Integrated Gradients",
+      "task_input": ["classification", "generation"],
+      "access_arch": {"access": ["white_box"], "arch": ["all"]},
+      "target_scope": "local",
+      "accessibility": "mid experts",
+      "description": {
+        "overview": "Layer Integrated Gradients applies the IG approach to internal model layers instead of inputs. It attributes importance to activations of a chosen intermediate layer.",
+        "main_functionalities": [
+          "Compute attributions for internal layer inputs or outputs",
+          "Enable analysis of intermediate representations"
+        ]
+      },
+      "strengths": [],
+      "limitations": [],
+      "research_applications": [
+        {
+          "used_in": "Captum Documentation (GitHub)",
+          "type": "docs",
+          "year": 2023,
+          "source": "Facebook AI Research",
+          "url": "https://captum.ai/api/layer_integrated_gradients.html",
+          "note": "Documents the layer-wise IG method in Captum."
+        }
+      ],
+      "typical_cost": "missing"
+    },
+    {
+      "name": "Saliency",
       "plugin_id": "captum_saliency_classifier",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["white_box"], "arch": ["transformer_general", "encoder", "NA"]},
       "target_scope": "local",
+      "accessibility":"non experts",
       "description": {
         "overview": "Saliency computes the gradient of the output score with respect to each input embedding, producing a token-level importance heatmap. It highlights tokens whose small changes most affect the output.",
         "main_functionalities": [
@@ -110,15 +156,24 @@
           "source": "Facebook AI Research",
           "url": "https://captum.ai/api/saliency.html",
           "note": "Describes Saliency in Captum."
+        }, 
+        {
+          "used_in": "Interpreto: An Explainability Library for Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "ArXiv",
+          "url": "https://arxiv.org/html/2512.09730v1", 
+          "note": "Introduces the Interpreto toolkits which also implements Saliency."
         }
       ],
       "typical_cost": "low"
     },
     {
-      "name": "Input\u00d7Gradient (Captum)",
+      "name": "Input\u00d7Gradient",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
+      "accessibility":"non experts",
       "description": {
         "overview": "Input\u00d7Gradient multiplies each input embedding by its gradient, yielding signed attributions. It highlights features with large values and gradients.",
         "main_functionalities": [
@@ -135,6 +190,14 @@
           "source": "Facebook AI Research",
           "url": "https://captum.ai/api/input_x_gradient.html",
           "note": "Details the Input\u00d7Gradient method in Captum."
+        }, 
+        {
+          "used_in": "Interpreto: An Explainability Library for Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "ArXiv",
+          "url": "https://arxiv.org/html/2512.09730v1", 
+          "note": "Introduces the Interpreto toolkits which also implements Input\u00d7Gradient."
         }
       ],
       "typical_cost": "low"
@@ -183,10 +246,11 @@
       "typical_cost": "medium"
     },
     {
-      "name": "GradientSHAP (Captum)",
+      "name": "GradientSHAP",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
+      "accessibility": "non experts",
       "description": {
         "overview": "GradientSHAP combines integrated gradients with randomized baselines. It approximates Shapley values by averaging integrated gradients from multiple noisy baseline inputs.",
         "main_functionalities": [
@@ -212,6 +276,14 @@
           "source": "Facebook AI Research",
           "url": "https://captum.ai/api/gradient_shap.html",
           "note": "Describes GradientSHAP in Captum."
+        }, 
+         {
+          "used_in": "Interpreto: An Explainability Library for Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "ArXiv",
+          "url": "https://arxiv.org/html/2512.09730v1", 
+          "note": "Introduces the Interpreto toolkits which also implements Gradient SHAP."
         }
       ],
       "typical_cost": "high"
@@ -243,10 +315,11 @@
       "typical_cost": "high"
     },
     {
-      "name": "Occlusion (Captum)",
+      "name": "Occlusion",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["black_box"], "arch": ["all"]},
       "target_scope": "local",
+      "accessibility":"non experts",
       "description": {
         "overview": "Occlusion masks out contiguous input segments (e.g., spans of tokens) and measures the effect on model output. The difference indicates the importance of the occluded region.",
         "main_functionalities": [
@@ -255,7 +328,8 @@
         ]
       },
       "strengths": [
-        "Intuitive and model-agnostic (no gradients needed)",
+        "Intuitive and human-friendly",
+         "Model-agnostic (no gradients needed)",
         "Highlights contiguous spans that influence output"
       ],
       "limitations": [
@@ -271,15 +345,92 @@
           "source": "ECCV",
           "url": "https://link.springer.com/chapter/10.1007/978-3-319-10590-1_53",
           "note": "Popularizes occlusion analysis for CNNs."
+        }, 
+        {
+          "used_in": "Interpreto: An Explainability Library for Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "ArXiv",
+          "url": "https://arxiv.org/html/2512.09730v1", 
+          "note": "Introduces the Interpreto toolkits which also implements Kernel SHAP."
         }
       ],
       "typical_cost": "high"
     },
     {
-      "name": "Kernel SHAP (InterpretML: ShapKernel)",
+      "name": "SHAP",
+      "task_input": ["classification"],
+      "access_arch": {"access": ["black_box"], "arch": ["all"]},
+      "target_scope": "local",
+      "accessibility": "non experts",
+      "description": {
+        "overview": "SHAP is a model-agnostic method to estimate feature attributions by Shapley values.",
+        "main_functionalities": [
+          "Compute local Shapley-based attributions for a predictor"
+        ]
+      },
+      "strengths": [],
+      "limitations": [],
+      "research_applications": [
+        {
+          "used_in": "A Unified Approach to Interpreting Model Predictions",
+          "type": "paper",
+          "year": 2017,
+          "source": "NeurIPS",
+          "url": "https://proceedings.neurips.cc/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf",
+          "note": "Introduces SHAP (Lundberg & Lee, 2017)."
+        }, 
+        {
+          "used_in": "ferret: a Framework for Benchmarking Explainers on Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics: System Demonstrations",
+          "url": "https://dl.acm.org/doi/10.1145/2939672.2939778",
+          "note": "Introduces the ferret toolkit which leverages feature attribution approaches like LIME to support the interpretation of individual model predictions."
+        }
+      ],
+      "typical_cost": "high"
+    },
+    {
+      "name": "TokenSHAP",
+      "task_input": ["generation"],
+      "access_arch": {"access": ["black_box"], "arch": ["all"]},
+      "target_scope": "local",
+      "accessibility": "non experts",
+      "description": {
+        "overview": "TokenSHAP is an implementation of SHAP built for text generation via language models.",
+        "main_functionalities": [
+          "Compute local Shapley-based attributions for a predictor"
+        ]
+      },
+      "strengths": [],
+      "limitations": [],
+      "research_applications": [
+        {
+          "used_in": "A Unified Approach to Interpreting Model Predictions",
+          "type": "paper",
+          "year": 2017,
+          "source": "NeurIPS",
+          "url": "https://proceedings.neurips.cc/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf",
+          "note": "Introduces SHAP (Lundberg & Lee, 2017)."
+        }, 
+        {
+          "used_in": "TokenSHAP: Interpreting Large Language Models with Monte Carlo Shapley Value Estimation",
+          "type": "paper",
+          "year": 2022, 
+          "source": "Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics: System Demonstrations",
+          "url": "https://arxiv.org/pdf/2407.10114",
+          "note": "Introduces TokenSHAP, a Monte Carlo implementation of SHAP tailored for large language models."
+        }
+      ],
+      "typical_cost": "high"
+    },
+    {
+      "name": "Kernel SHAP",
       "task_input": ["classification"],
       "access_arch": {"access": ["black_box"], "arch": ["all"]},
       "target_scope": "all",
+      "accessibility":"non experts",
       "description": {
         "overview": "Kernel SHAP is a model-agnostic method to estimate feature attributions by approximating Shapley values with a weighted linear regression on perturbations.",
         "main_functionalities": [
@@ -297,15 +448,92 @@
           "source": "NeurIPS",
           "url": "https://proceedings.neurips.cc/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf",
           "note": "Introduces SHAP (Lundberg & Lee, 2017)."
+        }, 
+        {
+          "used_in": "Interpreto: An Explainability Library for Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "ArXiv",
+          "url": "https://arxiv.org/html/2512.09730v1", 
+          "note": "Introduces the Interpreto toolkits which also implements Kernel SHAP."
         }
       ],
       "typical_cost": "high"
     },
     {
-      "name": "LIME (InterpretML: LimeTabular)",
+      "name": "Sobol",
+      "task_input": ["generation","classification"],
+      "access_arch": {"access": ["black_box"], "arch": ["all"]},
+      "target_scope": "local",
+      "accessibility":"non experts",
+      "description": {
+        "overview": "Based on variance decomposition, Sobol indices measure both individual (first-order) and interaction (higher-order) effects of features on model outputs.",
+        "main_functionalities": [
+          "Compute local attributions"
+        ]
+      },
+      "strengths": [],
+      "limitations": [],
+      "research_applications": [
+        {
+          "used_in": "missing",
+          "type": "paper",
+          "year": 2017,
+          "source": "NeurIPS",
+          "url": "https://proceedings.neurips.cc/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf",
+          "note": "Introduces SHAP (Lundberg & Lee, 2017)."
+        }, 
+        {
+          "used_in": "Interpreto: An Explainability Library for Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "ArXiv",
+          "url": "https://arxiv.org/html/2512.09730v1", 
+          "note": "Introduces the Interpreto toolkits which also implements Kernel SHAP."
+        }
+      ],
+      "typical_cost": "missing"
+    },
+    {
+      "name": "SmoothGrad",
+      "task_input": ["generation","classification"],
+      "access_arch": {"access": ["black_box"], "arch": ["all"]},
+      "target_scope": "local",
+      "accessibility":"non experts",
+      "description": {
+        "overview": "SmoothGrad generates multiple noisy versions of an input, computes gradients for each, and averages the results to obtain more stable and visually coherent attributions.",
+        "main_functionalities": [
+          "Compute local attributions"
+        ]
+      },
+      "strengths": [],
+      "limitations": [],
+      "research_applications": [
+        {
+          "used_in": "missing",
+          "type": "paper",
+          "year": 2017,
+          "source": "NeurIPS",
+          "url": "https://proceedings.neurips.cc/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf",
+          "note": "Introduces SHAP (Lundberg & Lee, 2017)."
+        }, 
+        {
+          "used_in": "Interpreto: An Explainability Library for Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "ArXiv",
+          "url": "https://arxiv.org/html/2512.09730v1", 
+          "note": "Introduces the Interpreto toolkits which also implements Kernel SHAP."
+        }
+      ],
+      "typical_cost": "missing"
+    },
+    {
+      "name": "LIME",
       "task_input": ["classification"],
       "access_arch": {"access": ["black_box"], "arch": ["all"]},
       "target_scope": "local",
+      "accessibility":"non experts", 
       "description": {
         "overview": "LIME (Local Interpretable Model-agnostic Explanations) fits a simple surrogate model around a specific instance by sampling perturbations. The surrogate’s weights on features explain the local prediction.",
         "main_functionalities": [
@@ -329,12 +557,28 @@
           "source": "KDD",
           "url": "https://dl.acm.org/doi/10.1145/2939672.2939778",
           "note": "Introduces the LIME method."
+        }, 
+        {
+          "used_in": "ferret: a Framework for Benchmarking Explainers on Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics: System Demonstrations",
+          "url": "https://dl.acm.org/doi/10.1145/2939672.2939778",
+          "note": "Introduces the ferret toolkit which leverages feature attribution approaches like LIME to support the interpretation of individual model predictions."
+        }, 
+        {
+          "used_in": "InterpretML: {A} Unified Framework for Machine Learning Interpretability",
+          "type": "paper",
+          "year": 2019,
+          "source": "ArXiv",
+          "url": "http://arxiv.org/abs/1909.09223",
+          "note": "Introduces the  InterpretML toolkit which implements the LIME method."
         }
       ],
       "typical_cost": "high"
     },
     {
-      "name": "Partial Dependence Plot (InterpretML: PartialDependence)",
+      "name": "Partial Dependence Plot",
       "task_input": ["classification"],
       "access_arch": {"access": ["black_box"], "arch": ["all"]},
       "target_scope": "global",
@@ -361,15 +605,24 @@
           "source": "Annals of Statistics",
           "url": "https://projecteuclid.org/euclid.aos/1013203451",
           "note": "Introduces partial dependence plots."
+        }, 
+        {
+          "used_in": "InterpretML: {A} Unified Framework for Machine Learning Interpretability",
+          "type": "paper",
+          "year": 2019,
+          "source": "ArXiv",
+          "url": "http://arxiv.org/abs/1909.09223",
+          "note": "Introduces the  InterpretML toolkit which implements the LIME method."
         }
       ],
       "typical_cost": "medium"
     },
     {
-      "name": "Morris Sensitivity Analysis (InterpretML: MorrisSensitivity)",
+      "name": "Morris Sensitivity Analysis",
       "task_input": ["classification"],
       "access_arch": {"access": ["black_box"], "arch": ["all"]},
       "target_scope": "global",
+      "accessibility":"non experts",
       "description": {
         "overview": "Morris Sensitivity analysis is a global sensitivity method that samples feature space along trajectories and computes elementary effects. It estimates each feature’s influence on the output variance.",
         "main_functionalities": [
@@ -393,6 +646,14 @@
           "source": "Technometrics",
           "url": "https://doi.org/10.1080/00401706.1991.10484804",
           "note": "Introduces Morris sensitivity method."
+        }, 
+        {
+          "used_in": "InterpretML: {A} Unified Framework for Machine Learning Interpretability",
+          "type": "paper",
+          "year": 2019,
+          "source": "ArXiv",
+          "url": "http://arxiv.org/abs/1909.09223",
+          "note": "Introduces the  InterpretML toolkit which implements the LIME method."
         }
       ],
       "typical_cost": "high"
@@ -626,6 +887,14 @@
           "source": "arXiv",
           "url": "https://arxiv.org/abs/2005.00928",
           "note": "Introduces the Attention Rollout method."
+        }, 
+        {
+          "used_in": "PnPXAI: A Universal XAI Framework Providing Automatic Explanations Across Diverse Modalities and Models",
+          "type": "paper",
+          "year": 2025,
+          "source": "arXiv",
+          "url": "missing",
+          "note": "Introduces the PnPXAI which implements the Attention Rollout method."
         }
       ],
       "typical_cost": "low"
@@ -732,6 +1001,33 @@
           "source": "arXiv",
           "url": "https://arxiv.org/abs/1909.05167",
           "note": "Describes the FAT Forensics toolbox including counterfactual modules."
+        }
+      ],
+      "typical_cost": "high"
+    },
+     {
+      "name": "LIT Counterfactual Generator",
+      "task_input": ["classification"],
+      "access_arch": {"access": ["black_box"], "arch": ["all"]},
+      "target_scope": "local",
+      "description": {
+        "overview": "The tool supports counterfactual generation techniques to provide behavioral analysis through systematic input manipulation. The idea is to create modified versions of the original input by substituting, removing, or adding tokens and then observing how the model's predictions change in response to these perturbations, making it particularly suitable for practitioners who want to understand model decision boundaries without requiring access to internal model components.  It is particularly suitable for practitioners with limited or no prior experience in explainable AI.",
+        "main_functionalities": [
+          "Generate counterfactual examples for a given prediction",
+          "Report the differences needed to alter the model decision"
+        ]
+      },
+      "strengths": ["Explanations are intuitive",
+    "The method is model agnostic"],
+      "limitations": ["Scalability issues may arise"],
+      "research_applications": [
+        {
+          "used_in": "The Language Interpretability Tool: Extensible, Interactive Visualizations and Analysis for {NLP} Models",
+          "type": "paper",
+          "year": 2020,
+          "source": "Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations (EMNLP)",
+          "url": "https://doi.org/10.18653/v1/2020.emnlp-demos.15",
+          "note": "Introduces the LIT toolkit which implements Integrated Gradients."
         }
       ],
       "typical_cost": "high"
@@ -1188,6 +1484,36 @@
 }
   ]
 }, 
+ {
+  "name": "Attention Visualization (Ecco)",
+  "task_input": ["general_NLP", "classification", "generation"],
+  "access_arch": { "access": "white_box", "arch": "all" },
+  "accessibility": "mid experts", 
+  "description": {
+    "overview": "Computes a layer-by-layer linear CKA matrix to visualize representation similarity across transformer layers.",
+    "main_functionalities": [
+      "Extract hidden states for each layer",
+      "Compute linear CKA similarity matrix",
+      "Visualize similarities as a heatmap"
+    ]
+  },
+  "strengths": [
+    "Intuitive"
+  ],
+  "limitations": [
+    "Attention can lack faithfulness when used for explanation"
+  ],
+  "research_applications": [ 
+  {
+  "used_in": "Ecco: An Open Source Library for the Explainability of Transformer Language Models",
+  "type": "paper",
+  "year": 2021,
+  "source": "Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing: System Demonstrations",
+  "url": "https://aclanthology.org/2021.acl-demo.30.pdf",
+  "note": "Introduces the Ecco toolkit for analyzing transformer language models. Includes implementation of CKA for comparing layer representations and studying representational similarity across model depth."
+}
+  ]
+},
 {
   "name": "CCA (layer similarity)",
   "plugin_id": "cca_layers",

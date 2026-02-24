@@ -1720,6 +1720,59 @@ with col_run:
 
 
             elif outputs and outputs.get("plugin") in ("inseq_decoder_ig", "inseq_encdec_ig") and outputs.get("out"):
+                import re 
+
+                def inseq_html_dark_fix(html: str) -> str:
+                    """
+                    Inject CSS into Inseq HTML so text is readable in dark mode when rendered via components.html (iframe).
+                    We also strip any <style> blocks that might force black text / white backgrounds.
+                    """
+                    if not html:
+                        return html
+
+                    # Remove existing style blocks (optional but often helps)
+                    html = re.sub(r"<style.*?>.*?</style>", "", html, flags=re.DOTALL | re.IGNORECASE)
+
+                    css = """
+                    <style>
+                    :root { color-scheme: dark; }
+                    html, body {
+                        background: transparent !important;
+                        color: #E5E7EB !important;
+                        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+                    }
+
+                    /* Force readable text everywhere */
+                    body, body * {
+                        color: inherit !important;
+                    }
+
+                    /* If Inseq uses table elements */
+                    table { background: transparent !important; }
+                    td, th { border-color: rgba(255,255,255,0.15) !important; }
+
+                    /* If there are code/pre blocks */
+                    pre, code {
+                        background: rgba(255,255,255,0.06) !important;
+                        color: inherit !important;
+                    }
+
+                    /* Avoid white “cards” */
+                    div, section, article {
+                        background: transparent !important;
+                    }
+                    </style>
+                    """
+
+                    # Inject into <head> if present, else prepend
+                    if re.search(r"</head>", html, flags=re.IGNORECASE):
+                        html = re.sub(r"</head>", css + "</head>", html, flags=re.IGNORECASE)
+                    else:
+                        html = css + html
+
+                    return html
+
+
                 st.subheader("Result")
                 with st.expander("ℹ️ What you are seeing", expanded=True):
                     st.write(
@@ -1732,10 +1785,9 @@ with col_run:
                 st.write(f"**Device:** {outputs.get('device', 'NA')}")
                 st.write(f"**Text:** {outputs.get('text', '')}")
 
-                # Render HTML returned by Inseq
-                components.html(outputs["out"], height=850, scrolling=True)
+                fixed = inseq_html_dark_fix(outputs["out"])
+                components.html(fixed, height=850, scrolling=True)
 
-                # Downloads (JSON always; we’ll add optional HTML download below)
                 render_downloads(outputs, selected_item=selected_item)
 
             # Locate your "selected_plugin_id" logic in app.py
