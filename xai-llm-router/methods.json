@@ -860,9 +860,11 @@
     },
     {
       "name": "Attention Rollout",
+      "plugin_id": "attention_rollout",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
+      "accessibility":"non experts",
       "description": {
         "overview": "Attention Rollout aggregates multi-head self-attention across layers by multiplying attention matrices. It computes how strongly each input token contributes to an output token through the attention pathway.",
         "main_functionalities": [

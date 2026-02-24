@@ -38,6 +38,7 @@ from toolkits.inseq_proxy_http import (
     InseqDecoderDiscretizedIG_HTTP, InseqEncDecDiscretizedIG_HTTP
 )
 from toolkits.meta_transparency import MetaTransparencyGraph  # adjust import path
+from toolkits.attention_rollout import AttentionRollout
 
 import tempfile
 import os
@@ -475,7 +476,7 @@ def get_plugins():
     plugin12 = EmbeddingPCALayers()
     plugin13 = LinearCKALayers()
     plugin14 = CCALayers()
-
+    plugin25 = AttentionRollout()
     
 
     return {
@@ -497,6 +498,9 @@ def get_plugins():
         plugin20.id: plugin20,
         plugin21.id: plugin21,
         plugin22.id: plugin22,
+        plugin23.id: plugin23,
+        plugin24.id: plugin24,
+        
 
         plugin9.id: plugin9,
         plugin10.id: plugin10,
@@ -504,6 +508,8 @@ def get_plugins():
         plugin12.id: plugin12,
         plugin13.id: plugin13,
         plugin14.id: plugin14,
+        plugin25.id: plugin25,
+
     }
 
 
@@ -2171,3 +2177,33 @@ with col_run:
                     selected_item=selected_item,
                     figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_cca_heatmap.png": fig2},
                 )
+
+
+            elif outputs and outputs.get("plugin") == "attention_rollout" and outputs.get("token_scores"):
+                st.subheader("Result")
+
+                with st.expander("ℹ️ How to read Attention Rollout", expanded=True):
+                    st.write(
+                        "- Attention rollout multiplies attention matrices across layers (with residual connections) to estimate token-to-token influence.\n"
+                        "- The scores below show which **source tokens** contribute most to the selected **target token** through attention pathways.\n"
+                        "- Scores are normalized to [0,1] for display."
+                    )
+
+                st.write(f"**Model:** {outputs.get('model','NA')}")
+                st.write(f"**Target token index:** {outputs.get('target_token_index','NA')}")
+
+                toks = outputs.get("tokens", [])
+                scores = outputs.get("token_scores", [])
+
+                # Highlight tokens (treat as nonnegative importance)
+                render_token_highlight(
+                    tokens=toks,
+                    scores=scores,          # all >= 0
+                    title="🖍️ Highlighted text (attention rollout relevance)",
+                    max_abs=1.0,
+                )
+
+                with st.expander("Top source tokens", expanded=False):
+                    st.dataframe(pd.DataFrame(outputs.get("top_sources", [])), use_container_width=True)
+
+                render_downloads(outputs, selected_item=selected_item)
