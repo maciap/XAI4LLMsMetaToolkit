@@ -829,7 +829,7 @@
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
       "description": {
-        "overview": "LRP redistributes the prediction score backward through the network to the inputs, assigning relevance scores via fixed propagation rules. It accounts for network structure (including positional encodings in Transformers) to conserve relevance【64†L53-L61】.",
+        "overview": "LRP redistributes the prediction score backward through the network to the inputs, assigning relevance scores via fixed propagation rules. It can compute attributions for the input token as well as at any layer",
         "main_functionalities": [
           "Backpropagate a target score to input features through relevance rules",
           "Ensure relevance conservation (inputs sum to output)",
@@ -837,21 +837,36 @@
         ]
       },
       "strengths": [
-        "Theoretically grounded propagation rules enforce conservation【64†L53-L61】",
-        "Designed to handle nonlinearities and structural layers",
-        "Applicable to vision and NLP transformer models"
+        "Theoretically grounded propagation rules enforce conservation",
+        "Inuitive and efficient"
       ],
       "limitations": [
-        "Complex to implement (requires layer-specific rules)【64†L53-L61】",
-        "Results depend on chosen LRP rule set",
-        "Needs adaptation for different model variants"
+        "Not straightforward to implement for different models (requires layer-specific rules)",
       ],
       "research_applications": [
+          {
+          "used_in": "On pixel-wise explanations for non-linear classifier decisions by layer-wise relevance propagation",
+          "type": "paper",
+          "year": 2015,
+          "source": "PloS one",
+          "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0130140",
+          "note": "Introduce the layer-wise relevance propagation method."
+        },
+          {
+          "used_in": "AttnLRP: attention-aware layer-wise relevance propagation for transformers",
+          "type": "paper",
+          "year": 2024,
+          "source": "Proceedings of the 41st International Conference on Machine Learning (ICML)",
+          "url": "",
+          "note": "Extends the Layer-wise Relevance Propagation attribution method to handle attention layers."
+        },
         {
           "used_in": "Revisiting LRP: Positional Attribution for Transformers",
           "type": "paper",
           "year": 2025,
           "source": "arXiv",
+
+
           "url": "https://arxiv.org/abs/2506.02138",
           "note": "Adaptation of LRP to Transformer models, accounting for positional encodings."
         }
@@ -866,20 +881,22 @@
       "target_scope": "local",
       "accessibility":"non experts",
       "description": {
-        "overview": "Attention Rollout aggregates multi-head self-attention across layers by multiplying attention matrices. It computes how strongly each input token contributes to an output token through the attention pathway.",
+        "overview": "Late layers often show homogenous and hence uninformative attention patterns because they become more contextualized. Attention rollout addresses this by tracking down attention weights all the way back to the input layer. In particular, Attention Rollout aggregates multi-head self-attention across layers by multiplying attention matrices and outputs a single attention score for any pair of tokens.",   
         "main_functionalities": [
-          "Aggregate attention weights across heads and layers (rollout)",
-          "Compute token-to-token relevance scores via attention product",
-          "Visualize cumulative attention flow from inputs to outputs"
+          "Aggregate attention weights across heads and layers",
+          "Compute token-to-token relevance scores via attention product"
         ]
       },
       "strengths": [
         "Efficient: uses existing attention weights (no backprop required)",
-        "Provides intuitive visualization of attention dependencies"
+        "Intuitive:  at the implementation level, the method boilds down to multiplying attention matrices across layers.",
+        "Provides intuitive visualization of attention dependencies", 
+        "Considers residual connections"
       ],
       "limitations": [
-        "Not truly causal (ignores non-attention parts of the model)",
-        "Effectiveness depends on meaningful attention (not all heads are informative)"
+        "Inherits the lack of faithfulness of attention-based explanations (attention may not reflect true importance)",
+        "Not causal",
+        "Ignores MLPs"
       ],
       "research_applications": [
         {
