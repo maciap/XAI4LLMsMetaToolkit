@@ -103,6 +103,58 @@ def feasible(user: Dict[str, str], m: Dict[str, Any]) -> Tuple[bool, str]:
 
     return True, ""
 
+def score(prefs: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str], List[str]]:
+    """
+    Preferences-only scoring:
+    - returns (score, matched_reasons, mismatched_reasons)
+    - mismatches are surfaced in UI to make it obvious these are not filters.
+    """
+    s = 0
+    matched: List[str] = []
+    mismatched: List[str] = []
+
+    # Granularity
+    if prefs["granularity"] != "NA":
+        grans = norm_list(m.get("granularity", []))
+        if prefs["granularity"] in grans:
+            s += 2
+            matched.append("🔍 granularity match")
+        else:
+            mismatched.append(f"🔍 granularity mismatch (wants {prefs['granularity']}, has {grans or 'NA'})")
+
+    # Goal
+    if prefs["goal"] != "NA":
+        goals = norm_list(m.get("user_goal_audience", []))
+        if prefs["goal"] in goals:
+            s += 2
+            matched.append("🎯 goal match")
+        else:
+            mismatched.append(f"🎯 goal mismatch (wants {prefs['goal']}, has {goals or 'NA'})")
+
+    # Format
+    if prefs["format"] != "NA":
+        fmts = norm_list(m.get("format", []))
+        if prefs["format"] in fmts:
+            s += 2
+            matched.append("🖥️ format match")
+        else:
+            mismatched.append(f"🖥️ format mismatch (wants {prefs['format']}, has {fmts or 'NA'})")
+
+    # Fidelity
+    if prefs["fidelity"] != "NA":
+        f = m.get("fidelity", "NA")
+        if f == prefs["fidelity"]:
+            s += 2
+            matched.append("🧪 fidelity match")
+        elif f == "mixed":
+            s += 1
+            matched.append("🧪 fidelity partially supported (tool is mixed)")
+            mismatched.append(f"🧪 fidelity preference not exact (wants {prefs['fidelity']}, tool is mixed)")
+        else:
+            mismatched.append(f"🧪 fidelity mismatch (wants {prefs['fidelity']}, has {f})")
+
+    return s, matched, mismatched
+
 
 def score(user: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str]]:
     s = 0
@@ -399,6 +451,21 @@ with col_recs:
                 st.session_state["selected_method"] = item["name"]
                 st.session_state["selected_plugin_id"] = item.get("plugin_id")
                 st.session_state.pop("last_outputs", None)
+
+
+
+
+
+with st.expander("⭐ Preferences (ranking only)", expanded=True):
+    st.caption("These do *not* hide tools. They only affect ordering and the 'matches/mismatches' info.")
+    prefs["granularity"] = st.selectbox("Granularity (preference)", DIM_VALUES["granularity"], index=DIM_VALUES["granularity"].index(DEFAULTS["granularity"]))
+    prefs["goal"] = st.selectbox("Goal / audience (preference)", DIM_VALUES["goal"], index=DIM_VALUES["goal"].index(DEFAULTS["goal"]))
+    prefs["fidelity"] = st.selectbox("Fidelity (preference)", DIM_VALUES["fidelity"], index=DIM_VALUES["fidelity"].index(DEFAULTS["fidelity"]))
+    prefs["format"] = st.selectbox("Explanation format (preference)", DIM_VALUES["format"], index=DIM_VALUES["format"].index(DEFAULTS["format"]))
+
+
+
+
 
 # Column 3: Selected method + Run + Result (initially empty)
 with col_run:

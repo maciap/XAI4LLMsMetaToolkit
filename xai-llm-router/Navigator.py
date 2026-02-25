@@ -1,6 +1,5 @@
 # ✅ UPDATED DESIGN: Hard constraints vs Preferences (ranking only)
 # Paste this as your app.py (it’s your code with minimal, targeted edits).
-
 import json
 import re
 import io
@@ -520,31 +519,56 @@ PLUGINS = get_plugins()
 # -------------------------
 # Config: dimension values
 # -------------------------
+#DIM_VALUES = {
+#    "task": ["NA", "classification", "generation", "seq2seq", "QA", "NER", "RAG", "agents", "general_NLP", "multimodal"],
+#    "access": ["NA", "black_box", "gray_box", "white_box", "mixed"],
+#    "arch": ["NA", "encoder", "decoder", "encdec", "transformer_general"],
+#    "scope": ["NA", "local", "global", "both"],
+#    "granularity": ["NA", "token", "span", "sentence", "document", "example", "concept", "neuron", "head", "layer", "circuit", "dataset", "component_graph"],
+#    "goal": ["NA", "research_debug", "mech_interp", "model_eval", "fairness_audit", "end_user_explain", "general_tooling"],
+#    "fidelity": ["NA", "high", "medium", "low", "mixed"],
+#    "format": ["NA", "visual_UI", "notebook_viz", "text_rationale", "rules", "ranked_examples", "metrics", "API_only", "interactive_dialogue"],
+#}
 DIM_VALUES = {
     "task": ["NA", "classification", "generation", "seq2seq", "QA", "NER", "RAG", "agents", "general_NLP", "multimodal"],
     "access": ["NA", "black_box", "gray_box", "white_box", "mixed"],
     "arch": ["NA", "encoder", "decoder", "encdec", "transformer_general"],
     "scope": ["NA", "local", "global", "both"],
-    "granularity": ["NA", "token", "span", "sentence", "document", "example", "concept", "neuron", "head", "layer", "circuit", "dataset", "component_graph"],
-    "goal": ["NA", "research_debug", "mech_interp", "model_eval", "fairness_audit", "end_user_explain", "general_tooling"],
-    "fidelity": ["NA", "high", "medium", "low", "mixed"],
-    "format": ["NA", "visual_UI", "notebook_viz", "text_rationale", "rules", "ranked_examples", "metrics", "API_only", "interactive_dialogue"],
+    # ✅ NEW: ranking-only preference
+    "accessibility": ["NA", "experts", "mid experts", "non experts"],
 }
+
+
+
+
+#DEFAULTS = {
+#    "task": "NA",
+#    "access": "NA",
+#    "arch": "NA",
+#    "scope": "NA",
+#    "granularity": "NA",
+#    "goal": "NA",
+#    "fidelity": "NA",
+#    "format": "NA",
+#}
+
 
 DEFAULTS = {
     "task": "NA",
     "access": "NA",
     "arch": "NA",
     "scope": "NA",
-    "granularity": "NA",
-    "goal": "NA",
-    "fidelity": "NA",
-    "format": "NA",
+    "accessibility": "NA",
 }
 
-# Hard vs preference dims (UI clarity + logic)
 HARD_DIMS = ["task", "access", "arch", "scope"]
-PREF_DIMS = ["granularity", "goal", "fidelity", "format"]
+PREF_DIMS = ["accessibility"]
+
+
+
+#Hard vs preference dims (UI clarity + logic)
+#HARD_DIMS = ["task", "access", "arch", "scope"]
+#PREF_DIMS = ["granularity", "goal", "fidelity", "format"]
 
 
 # -------------------------
@@ -761,57 +785,44 @@ def feasible(hard: Dict[str, str], m: Dict[str, Any]) -> Tuple[bool, str]:
     return True, ""
 
 
+def _acc_rank_order(pref: str) -> List[str]:
+    """
+    Preference -> ordering from best to worst.
+    """
+    pref = (pref or "NA").strip()
+    if pref == "experts":
+        return ["experts", "mid experts", "non experts"]
+    if pref == "non experts":
+        return ["non experts", "mid experts", "experts"]
+    if pref == "mid experts":
+        return ["mid experts", "non experts", "experts"]
+    return []  # NA => no ranking
+
 def score(prefs: Dict[str, str], m: Dict[str, Any]) -> Tuple[int, List[str], List[str]]:
     """
-    Preferences-only scoring:
-    - returns (score, matched_reasons, mismatched_reasons)
-    - mismatches are surfaced in UI to make it obvious these are not filters.
+    Accessibility-only scoring:
+    - higher score = higher rank
+    - if prefs["accessibility"] == "NA" -> score 0 for everything (no ranking)
     """
-    s = 0
-    matched: List[str] = []
-    mismatched: List[str] = []
+    pref = prefs.get("accessibility", "NA")
+    order = _acc_rank_order(pref)
 
-    # Granularity
-    if prefs["granularity"] != "NA":
-        grans = norm_list(m.get("granularity", []))
-        if prefs["granularity"] in grans:
-            s += 2
-            matched.append("🔍 granularity match")
-        else:
-            mismatched.append(f"🔍 granularity mismatch (wants {prefs['granularity']}, has {grans or 'NA'})")
+    tool_acc = (m.get("accessibility", "NA") or "NA").strip()
 
-    # Goal
-    if prefs["goal"] != "NA":
-        goals = norm_list(m.get("user_goal_audience", []))
-        if prefs["goal"] in goals:
-            s += 2
-            matched.append("🎯 goal match")
-        else:
-            mismatched.append(f"🎯 goal mismatch (wants {prefs['goal']}, has {goals or 'NA'})")
+    if not order or pref == "NA":
+        return 0, [], []  # no ranking requested
 
-    # Format
-    if prefs["format"] != "NA":
-        fmts = norm_list(m.get("format", []))
-        if prefs["format"] in fmts:
-            s += 2
-            matched.append("🖥️ format match")
-        else:
-            mismatched.append(f"🖥️ format mismatch (wants {prefs['format']}, has {fmts or 'NA'})")
+    # If tool has unknown accessibility, put it last
+    if tool_acc not in ("experts", "mid experts", "non experts"):
+        return -1, [], [f"🎓 accessibility unknown (tool has {tool_acc})"]
 
-    # Fidelity
-    if prefs["fidelity"] != "NA":
-        f = m.get("fidelity", "NA")
-        if f == prefs["fidelity"]:
-            s += 2
-            matched.append("🧪 fidelity match")
-        elif f == "mixed":
-            s += 1
-            matched.append("🧪 fidelity partially supported (tool is mixed)")
-            mismatched.append(f"🧪 fidelity preference not exact (wants {prefs['fidelity']}, tool is mixed)")
-        else:
-            mismatched.append(f"🧪 fidelity mismatch (wants {prefs['fidelity']}, has {f})")
-
-    return s, matched, mismatched
+    # Map: best -> 2, middle -> 1, worst -> 0
+    # (or any scale you prefer)
+    if tool_acc == order[0]:
+        return 2, [f"🎓 accessibility match ({tool_acc})"], []
+    if tool_acc == order[1]:
+        return 1, [f"🎓 accessibility mid ({tool_acc})"], []
+    return 0, [], [f"🎓 accessibility lower priority (tool has {tool_acc})"]
 
 
 
@@ -1006,9 +1017,7 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
             ("Scope", meta.get("scope")),
             ("Access", meta.get("access")),
             ("Architecture", meta.get("arch")),
-            ("Granularity", meta.get("granularity")),
-            ("Format", meta.get("format")),
-            ("Fidelity", meta.get("fidelity")),
+            ("Accessibility", meta.get("accessibility")),  
         ]
 
         any_chip = False
@@ -1086,9 +1095,11 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
 # -------------------------
 # Streamlit UI
 # -------------------------
-st.set_page_config(page_title="XAI Router for LLMs", layout="wide")
+st.set_page_config(page_title="LLM Explainability Navigator 🧭", layout="wide")
 
 # Top image
+st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
+
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     st.image("images/logo_app.png", width=220)
@@ -1106,7 +1117,7 @@ st.markdown("""
 .block-container {
   padding-top: 1.6rem;
   padding-bottom: 2rem;
-  max-width: 1250px;
+  max-width: 1650px !important;
 }
 
 /* Headings */
@@ -1159,6 +1170,25 @@ div[data-baseweb="select"] > div,
 
   font-size: 0.85rem;
   font-weight: 600;
+}
+            
+
+/* --- Columns --- */
+div[data-testid="column"] * {
+  min-width: 0 !important;           
+}
+
+div[data-testid="stMarkdownContainer"] p,
+div[data-testid="stMarkdownContainer"] li {
+  white-space: normal !important;     /* wrap text */
+  overflow-wrap: anywhere !important; /* break long tokens/URLs */
+  word-break: break-word !important;
+}
+
+/* If you have bullet spans in strengths */
+div[data-testid="stMarkdownContainer"] span {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
 }
 
 </style> 
@@ -1216,12 +1246,13 @@ with st.sidebar:
             hard["arch"] = st.selectbox("Architecture (hard)", DIM_VALUES["arch"], index=DIM_VALUES["arch"].index(DEFAULTS["arch"]))
             hard["scope"] = st.selectbox("Explanation scope (hard)", DIM_VALUES["scope"], index=DIM_VALUES["scope"].index(DEFAULTS["scope"]))
 
-        with st.expander("⭐ Preferences (ranking only)", expanded=True):
-            st.caption("These do *not* hide tools. They only affect ordering and the 'matches/mismatches' info.")
-            prefs["granularity"] = st.selectbox("Granularity (preference)", DIM_VALUES["granularity"], index=DIM_VALUES["granularity"].index(DEFAULTS["granularity"]))
-            prefs["goal"] = st.selectbox("Goal / audience (preference)", DIM_VALUES["goal"], index=DIM_VALUES["goal"].index(DEFAULTS["goal"]))
-            prefs["fidelity"] = st.selectbox("Fidelity (preference)", DIM_VALUES["fidelity"], index=DIM_VALUES["fidelity"].index(DEFAULTS["fidelity"]))
-            prefs["format"] = st.selectbox("Explanation format (preference)", DIM_VALUES["format"], index=DIM_VALUES["format"].index(DEFAULTS["format"]))
+        with st.expander("⭐ Ranking preference (accessibility)", expanded=True):
+            st.caption("This does not hide tools. It only changes ordering.")
+            prefs["accessibility"] = st.selectbox(
+                "Audience / accessibility (ranking only)",
+                DIM_VALUES["accessibility"],
+                index=DIM_VALUES["accessibility"].index(DEFAULTS["accessibility"]),
+            )
 
         st.info("Tip: If a tool appears but doesn't match your format/fidelity, it’s because those are preferences (ranking), not filters.")
 
@@ -1245,11 +1276,12 @@ with st.sidebar:
                 hard["arch"] = st.selectbox("Architecture (hard)", DIM_VALUES["arch"], index=0)
                 hard["scope"] = st.selectbox("Explanation scope (hard)", DIM_VALUES["scope"], index=0)
 
-        with st.expander("⭐ Preferences (optional, ranking only)", expanded=True):
-            prefs["granularity"] = st.selectbox("Granularity (preference)", DIM_VALUES["granularity"], index=0)
-            prefs["goal"] = st.selectbox("Goal / audience (preference)", DIM_VALUES["goal"], index=0)
-            prefs["fidelity"] = st.selectbox("Fidelity (preference)", DIM_VALUES["fidelity"], index=0)
-            prefs["format"] = st.selectbox("Explanation format (preference)", DIM_VALUES["format"], index=0)
+        with st.expander("⭐ Ranking preference (accessibility)", expanded=True):
+            prefs["accessibility"] = st.selectbox(
+                "Audience / accessibility (ranking only)",
+                DIM_VALUES["accessibility"],
+                index=DIM_VALUES["accessibility"].index(DEFAULTS["accessibility"]),
+            )
 
         temperature = st.slider("Text model temperature", 0.2, 1.5, 0.7, 0.05)
         show_text_prefs = st.checkbox("Show predicted preferences", value=True)
@@ -1279,6 +1311,7 @@ if mode == "Pick with filters":
                 "description": m.get("description", {}),
                 "strengths": m.get("strengths", []),
                 "limitations": m.get("limitations", []),
+                "accessibility": m.get("accessibility", "NA"),
                 "research_applications": m.get("research_applications", []),
                 "meta": {
                     "scope": m.get("target_scope", "NA"),
@@ -1287,6 +1320,7 @@ if mode == "Pick with filters":
                     "granularity": m.get("granularity", "NA"),
                     "format": m.get("format", "NA"),
                     "fidelity": m.get("fidelity", "NA"),
+                     "accessibility": m.get("accessibility", "NA"),
                 },
                 "hard_used": {k: hard.get(k, "NA") for k in HARD_DIMS},
                 "prefs_used": {k: prefs.get(k, "NA") for k in PREF_DIMS},
@@ -1313,11 +1347,7 @@ else:
         ranked, text_probs = rank_methods(
             methods=filtered_methods,
             user_text=user_text.strip(),
-            dim_values_map=DIM_VALUES,
-            base_scores=None,
-            temperature=temperature,
-            text_weight=1.0,
-            soft_scale=10.0,
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
 
         for item in ranked:
@@ -1353,7 +1383,7 @@ else:
 # -------------------------
 # Layout (3 columns)
 # -------------------------
-col_spacer, col_recs, col_run = st.columns([0.15, 1.2, 1.3], gap="large")
+col_spacer, col_recs, col_run = st.columns([0.2, 1.4, 1.8], gap="large")
 
 # Column 2: Recommendations
 with col_recs:

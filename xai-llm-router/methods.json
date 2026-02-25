@@ -841,7 +841,7 @@
         "Inuitive and efficient"
       ],
       "limitations": [
-        "Not straightforward to implement for different models (requires layer-specific rules)",
+        "Not straightforward to implement for different models (requires layer-specific rules)"
       ],
       "research_applications": [
           {
