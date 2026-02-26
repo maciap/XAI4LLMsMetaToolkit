@@ -838,8 +838,102 @@ def render_plugin_form(plugin):
 # -------------------------
 # Selected tool card
 # -------------------------
+
+def _first_non_na(*vals):
+    for v in vals:
+        if v is None:
+            continue
+        if isinstance(v, list):
+            v = [x for x in v if x and x != "NA"]
+            if v:
+                return ", ".join(map(str, v))
+            continue
+        v = str(v).strip()
+        if v and v != "NA":
+            return v
+    return "NA"
+
+
 def _safe(s: str) -> str:
     return re.sub(r"[<>]", "", s or "")
+
+
+def pretty_task(m: Dict[str, Any]) -> str:
+    """
+    Returns 'Classification' or 'Generation' (or '' if not one of these).
+    Uses methods.json fields: m['task_input'] typically.
+    """
+    tasks = norm_list(m.get("task_input", []))
+    tasks_l = [str(t).strip().lower() for t in tasks if t and t != "NA"]
+
+    # classify-like
+    if any(("classification" in t) or ("class" == t) or ("text_classification" in t) for t in tasks_l):
+        return "Text Classification"
+
+    # generation-like
+    if any(("generation" in t) or ("gen" == t) or ("text_generation" in t) for t in tasks_l):
+        return "Text Generation"
+
+    return ""
+
+
+def pretty_arch(m: Dict[str, Any]) -> str:
+    """
+    Returns 'Decoder-only' or 'Encoder–Decoder' (or '' if not one of these).
+    Uses methods.json fields: m['access_arch']['arch'] typically.
+    """
+    arch = (m.get("access_arch", {}) or {}).get("arch", "")
+    archs = norm_list(arch)
+    archs_l = [str(a).strip().lower() for a in archs if a and a != "NA"]
+
+    # decoder-only
+    if any(a in ("decoder", "decoder_only", "decoder-only") for a in archs_l):
+        return "Decoder-only"
+
+    # encoder-decoder
+    if any(a in ("enc_dec", "enc-dec", "encoder_decoder", "encoder-decoder", "seq2seq") for a in archs_l):
+        return "Encoder–Decoder"
+
+    return ""
+
+
+def _pretty_task_label(item: Dict[str, Any]) -> str:
+    """
+    Show only if task is classification or generation, else ''.
+    Tries both: item['task_input'] and item['meta']['task'].
+    """
+    tasks = item.get("task_input", None)
+    if tasks is None:
+        tasks = (item.get("meta", {}) or {}).get("task", None)
+
+    tasks = norm_list(tasks)
+    tasks_l = [str(t).strip().lower() for t in tasks if t and t != "NA"]
+
+    if any("class" in t for t in tasks_l):
+        return "Classification"
+    if any(("generation" in t) or ("text_generation" in t) or (t == "gen") for t in tasks_l):
+        return "Generation"
+    return ""
+
+
+def _pretty_arch_label(item: Dict[str, Any]) -> str:
+    """
+    Show only if arch is decoder or enc_dec, else ''.
+    Tries both: item['access_arch']['arch'] and item['meta']['arch'].
+    """
+    arch = (item.get("access_arch", {}) or {}).get("arch", None)
+    if arch is None:
+        arch = (item.get("meta", {}) or {}).get("arch", None)
+
+    archs = norm_list(arch)
+    archs_l = [str(a).strip().lower() for a in archs if a and a != "NA"]
+
+    if any(a in ("decoder", "decoder_only", "decoder-only") for a in archs_l):
+        return "Decoder-only"
+    if any(a in ("enc_dec", "enc-dec", "encoder_decoder", "encoder-decoder", "seq2seq") for a in archs_l):
+        return "Encoder–Decoder"
+    return ""
+
 
 def _chip(text: str):
     st.markdown(
@@ -856,6 +950,25 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
     meta = selected_item.get("meta", {}) or {}
     desc = selected_item.get("description", {}) or {}
 
+
+    arch_val = _first_non_na(
+        meta.get("arch"),
+        (selected_item.get("access_arch", {}) or {}).get("arch"),
+    )
+    task_val = _first_non_na(
+        meta.get("task"),
+        selected_item.get("task_input"),
+    )
+
+    subtitle_bits = []
+    if arch_val != "NA":
+        subtitle_bits.append(f"🏗️ {_safe(arch_val)}")
+    if task_val != "NA":
+        subtitle_bits.append(f"🎯 {_safe(task_val)}")
+    subtitle = " · ".join(subtitle_bits)
+
+    
+
     overview = desc.get("overview") or desc.get("summary") or ""
     funcs = desc.get("main_functionalities", []) or []
     strengths = selected_item.get("strengths", []) or []
@@ -871,6 +984,7 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
                 <div style="font-size:1.45rem; font-weight:700; margin-bottom:0.25rem;">
                  🛠️ {_safe(name)}
                 </div>
+                {f"<div style='color:#6b7280; font-size:0.92rem; margin-top:0.1rem;'>{subtitle}</div>" if subtitle else ""}
                 <div style="color: var(--text-color); font-size:0.98rem; line-height:1.35;">
                   {_safe(overview) if overview else _safe(notes)}
                 </div>
@@ -883,6 +997,7 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
         st.markdown("<div style='height:0.65rem'></div>", unsafe_allow_html=True)
 
         chip_map = [
+            ("Task", meta.get("task") or selected_item.get("task_input")),
             ("Scope", meta.get("scope")),
             ("Access", meta.get("access")),
             ("Architecture", meta.get("arch")),

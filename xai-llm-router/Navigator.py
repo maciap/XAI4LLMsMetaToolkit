@@ -52,9 +52,7 @@ from toolkits.PCAViz import EmbeddingPCALayers
 import plotly.express as px
 import plotly.graph_objects as go
 from toolkits.linear_cka import LinearCKALayers
-
-from toolkits.cca_layers import CCALayers
-
+from toolkits.cca_layers import CCALayers  
 import html as _html
 
 from Navigator_utils import (
@@ -80,6 +78,8 @@ from Navigator_utils import (
     _safe,
     _chip,
     render_selected_tool_card,
+    _pretty_task_label, 
+    _pretty_arch_label
 )
 
 import html
@@ -189,19 +189,19 @@ PLUGINS = get_plugins()
 # -------------------------
 
 DIM_VALUES = {
-    "task": ["NA", "classification", "generation", "seq2seq", "QA", "NER", "RAG", "agents", "general_NLP", "multimodal"],
-    "access": ["NA", "black_box", "gray_box", "white_box", "mixed"],
-    "arch": ["NA", "encoder", "decoder", "encdec", "transformer_general"],
+    "task": ["NA", "classification", "generation"],
+    "access": ["NA", "black_box",  "white_box"],
+    "arch": ["NA", "decoder", "encdec"],
     "scope": ["NA", "local", "global", "both"],
     "accessibility": ["NA", "experts", "mid experts", "non experts"],
 }
 
 DEFAULTS = {
-    "task": "NA",
-    "access": "NA",
-    "arch": "NA",
-    "scope": "NA",
-    "accessibility": "NA",
+    "task": "classification",
+    "access": "white_box",
+    "arch": "decoder",
+    "scope": "local",
+    "accessibility": "non experts",
 }
 
 HARD_DIMS = ["task", "access", "arch", "scope"]
@@ -470,7 +470,7 @@ with st.sidebar:
                 index=DIM_VALUES["accessibility"].index(DEFAULTS["accessibility"]),
             )
 
-        st.info("Tip: If a tool appears but doesn't match your format/fidelity, it’s because those are preferences (ranking), not filters.")
+        st.info("Tip: If a tool appears but doesn't match your level of expertise, it’s because that is just a preference.")
 
     else:
         user_text = st.text_area(
@@ -530,7 +530,9 @@ if mode == "Pick with filters":
                 "limitations": m.get("limitations", []),
                 "accessibility": m.get("accessibility", "NA"),
                 "research_applications": m.get("research_applications", []),
+                "task_input": m.get("task_input", []),
                 "meta": {
+                     "task": m.get("task_input", "NA"),
                     "scope": m.get("target_scope", "NA"),
                     "access": m.get("access_arch", {}).get("access", "NA"),
                     "arch": m.get("access_arch", {}).get("arch", "NA"),
@@ -584,7 +586,10 @@ else:
                     "strengths": m.get("strengths", []),
                     "limitations": m.get("limitations", []),
                     "research_applications": m.get("research_applications", []),
+                    "task_input": m.get("task_input", []),
+
                     "meta": {
+                        "task": m.get("task_input", "NA"),
                         "scope": m.get("target_scope", "NA"),
                         "access": m.get("access_arch", {}).get("access", "NA"),
                         "arch": m.get("access_arch", {}).get("arch", "NA"),
@@ -618,6 +623,15 @@ with col_recs:
 
         with st.container(border=True):
             st.markdown(f"### {item['name']}")
+            tlabel = _pretty_task_label(item)
+            alabel = _pretty_arch_label(item)
+
+            # Show Task + Arch ONLY for allowed values
+            if tlabel:
+                st.caption(f"🎯 Task: {tlabel}")
+            if alabel:
+                st.caption(f"🏗️ Architecture: {alabel}")
+
             st.write(f"**Preference score:** {item['score']:.2f}")
 
             if item.get("matched"):
