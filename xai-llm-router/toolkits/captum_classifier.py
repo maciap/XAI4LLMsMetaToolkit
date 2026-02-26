@@ -7,7 +7,16 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 import torch.nn.functional as F
 
-from captum.attr import IntegratedGradients, Saliency, DeepLift
+from captum.attr import (
+    IntegratedGradients,
+    Saliency,
+    DeepLift,
+    InputXGradient,
+    GradientShap,
+    Occlusion,
+    FeatureAblation,
+    NoiseTunnel,
+)
 from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTokenizer
 
 
@@ -20,6 +29,7 @@ class FieldSpec:
     required: bool = True
     options: Optional[List[str]] = None
     help: str = ""
+    default: Optional[Any] = None  # optional convenience
 
 
 class ToolkitPlugin:
@@ -37,6 +47,13 @@ class ToolkitPlugin:
 def _to_int(x: Any, default: int) -> int:
     try:
         return int(x)
+    except Exception:
+        return default
+
+
+def _to_float(x: Any, default: float) -> float:
+    try:
+        return float(x)
     except Exception:
         return default
 
@@ -66,28 +83,40 @@ def _merge_wordpieces(tokens: List[str], scores: List[float]) -> Tuple[List[str]
     return merged_tokens, merged_scores
 
 
-# ---------- Generic Captum plugin ----------
-class CaptumClassifierAttribution(ToolkitPlugin):
+# ---------- Generic Captum base (NOT registered directly) ----------
+class _CaptumClassifierBase(ToolkitPlugin):
     """
-    Generic token attributions for HuggingFace *sequence classification* models.
+    Base implementation shared by all Captum classifier plugins.
 
-    - Algorithm: Integrated Gradients / Saliency / DeepLift
-    - Target: predicted or explicit label index
-    - Attribution is computed on input embeddings and reduced to per-token scores.
-    - Subword tokens are merged for nicer display.
+    IMPORTANT: This class is not meant to be used directly as a plugin.
+    Use the small wrapper classes at the bottom (one per method), each with its own id/name.
+
+    Supported algorithms:
+      - IntegratedGradients
+      - Saliency
+      - DeepLift
+      - InputXGradient
+      - GradientShap
+      - Occlusion (embedding occlusion)
+      - FeatureAblation (embedding ablation)
+      - NoiseTunnel(Saliency) / NoiseTunnel(IntegratedGradients) / NoiseTunnel(InputXGradient)
     """
 
-    id = "captum_classifier"
-    name = "Captum (Classifier Attribution) — IG / Saliency / DeepLift"
+    # Child classes must override these:
+    id = "captum_classifier_base"
+    name = "Captum (Classifier Attribution) — Base"
+    FIXED_ALGO: str = "IntegratedGradients"
+
+    # Child classes can drop irrelevant fields from the shared spec:
+    DROP_FIELDS: set[str] = set()
 
     def __init__(self, device: Optional[str] = None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-
-        # Cache: loaded HF resources by model name
         self._cache: Dict[str, Dict[str, Any]] = {}
 
     def spec(self) -> List[FieldSpec]:
-        return [
+        # Shared core UI fields across all methods
+        fields: List[FieldSpec] = [
             FieldSpec(
                 key="model_name",
                 label="HF model name (sequence classification)",
@@ -104,13 +133,6 @@ class CaptumClassifierAttribution(ToolkitPlugin):
                 help="Type a sentence to explain.",
             ),
             FieldSpec(
-                key="algorithm",
-                label="Attribution algorithm",
-                type="select",
-                options=["IntegratedGradients", "Saliency", "DeepLift"],
-                help="IG is usually most stable; Saliency is fastest; DeepLift can work well too.",
-            ),
-            FieldSpec(
                 key="target_mode",
                 label="Target to explain",
                 type="select",
@@ -123,13 +145,6 @@ class CaptumClassifierAttribution(ToolkitPlugin):
                 type="number",
                 required=False,
                 help="0-based class index. Example: SST-2 negative=0, positive=1.",
-            ),
-            FieldSpec(
-                key="n_steps",
-                label="IG steps (only for IntegratedGradients)",
-                type="number",
-                required=False,
-                help="More steps = smoother but slower (try 20–100).",
             ),
             FieldSpec(
                 key="max_length",
@@ -147,31 +162,96 @@ class CaptumClassifierAttribution(ToolkitPlugin):
             ),
         ]
 
+        # Method-specific knobs (only shown for methods that need them)
+        # IG + NT(IG)
+        fields.append(
+            FieldSpec(
+                key="n_steps",
+                label="IG steps",
+                type="number",
+                required=False,
+                help="Used for IntegratedGradients and NoiseTunnel(IntegratedGradients). Try 20–100.",
+            )
+        )
+
+        # NoiseTunnel params
+        fields.extend(
+            [
+                FieldSpec(
+                    key="nt_type",
+                    label="NoiseTunnel type",
+                    type="select",
+                    required=False,
+                    options=["smoothgrad", "smoothgrad_sq", "vargrad"],
+                    help="Used only for NoiseTunnel(...).",
+                ),
+                FieldSpec(
+                    key="nt_samples",
+                    label="NoiseTunnel samples",
+                    type="number",
+                    required=False,
+                    help="Used only for NoiseTunnel(...). Typical: 10–50.",
+                ),
+                FieldSpec(
+                    key="nt_stdev",
+                    label="NoiseTunnel stdevs",
+                    type="number",
+                    required=False,
+                    help="Used only for NoiseTunnel(...). Typical: 0.01–0.2 (embedding space).",
+                ),
+            ]
+        )
+
+        # GradientShap params
+        fields.extend(
+            [
+                FieldSpec(
+                    key="gs_samples",
+                    label="GradientShap samples",
+                    type="number",
+                    required=False,
+                    help="Used only for GradientShap. Typical: 10–50.",
+                ),
+                FieldSpec(
+                    key="gs_stdev",
+                    label="GradientShap stdevs",
+                    type="number",
+                    required=False,
+                    help="Used only for GradientShap. Typical: 0.01–0.2 (embedding space).",
+                ),
+            ]
+        )
+
+        # Occlusion params
+        fields.append(
+            FieldSpec(
+                key="occlusion_window",
+                label="Occlusion window (tokens)",
+                type="number",
+                required=False,
+                help="Used only for Occlusion. 1 occludes one token at a time; >1 uses a sliding window.",
+            )
+        )
+
+        drop = set(self.DROP_FIELDS or set())
+        return [f for f in fields if f.key not in drop]
+
     # ---- model loading / caching ----
     def _load_model(self, model_name: str) -> Dict[str, Any]:
         if model_name in self._cache:
             return self._cache[model_name]
 
-        # Ensure it's a sequence classification config
         cfg = AutoConfig.from_pretrained(model_name)
-
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         model = AutoModelForSequenceClassification.from_pretrained(model_name, config=cfg)
         model.to(self.device)
         model.eval()
 
         label_map = None
-        # cfg.id2label is typically a dict {0:"NEGATIVE", 1:"POSITIVE"} etc.
         if hasattr(cfg, "id2label") and isinstance(cfg.id2label, dict) and cfg.id2label:
-            # normalize keys to int
             label_map = {int(k): str(v) for k, v in cfg.id2label.items()}
 
-        bundle = {
-            "config": cfg,
-            "tokenizer": tokenizer,
-            "model": model,
-            "label_map": label_map,
-        }
+        bundle = {"config": cfg, "tokenizer": tokenizer, "model": model, "label_map": label_map}
         self._cache[model_name] = bundle
         return bundle
 
@@ -181,32 +261,39 @@ class CaptumClassifierAttribution(ToolkitPlugin):
         return out.logits  # [B, C]
 
     def run(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        model_name = (inputs.get("model_name") or "").strip()
-        if not model_name:
-            model_name = "distilbert-base-uncased-finetuned-sst-2-english"
+        model_name = (inputs.get("model_name") or "").strip() or "distilbert-base-uncased-finetuned-sst-2-english"
 
         sentence: str = (inputs.get("sentence") or "").strip()
         if not sentence:
             raise ValueError("Sentence is empty.")
 
-        algorithm: str = inputs.get("algorithm") or "IntegratedGradients"
-        target_mode: str = inputs.get("target_mode") or "predicted"
+        # algorithm fixed per plugin class
+        algorithm: str = self.FIXED_ALGO
+
+        target_mode: str = (inputs.get("target_mode") or "predicted").strip()
         merge_subwords: bool = bool(inputs.get("merge_subwords", True))
 
-        n_steps = _to_int(inputs.get("n_steps", 50), 50)
-        n_steps = max(5, min(n_steps, 300))
-
-        max_length = _to_int(inputs.get("max_length", 256), 256)
-        max_length = max(8, min(max_length, 1024))
-
+        n_steps = max(5, min(_to_int(inputs.get("n_steps", 50), 50), 300))
+        max_length = max(8, min(_to_int(inputs.get("max_length", 256), 256), 1024))
         target_index = _to_int(inputs.get("target_index", 0), 0)
+
+        # NoiseTunnel params
+        nt_type = (inputs.get("nt_type") or "smoothgrad").strip()
+        nt_samples = max(1, min(_to_int(inputs.get("nt_samples", 20), 20), 200))
+        nt_stdev = max(0.0, _to_float(inputs.get("nt_stdev", 0.02), 0.02))
+
+        # GradientShap params
+        gs_samples = max(1, min(_to_int(inputs.get("gs_samples", 20), 20), 200))
+        gs_stdev = max(0.0, _to_float(inputs.get("gs_stdev", 0.02), 0.02))
+
+        # Occlusion params
+        occl_window = max(1, min(_to_int(inputs.get("occlusion_window", 1), 1), 64))
 
         bundle = self._load_model(model_name)
         tokenizer = bundle["tokenizer"]
         model = bundle["model"]
         label_map = bundle["label_map"]
 
-        # tokenize
         enc = tokenizer(
             sentence,
             return_tensors="pt",
@@ -214,10 +301,9 @@ class CaptumClassifierAttribution(ToolkitPlugin):
             max_length=max_length,
             padding=False,
         )
-        input_ids = enc["input_ids"].to(self.device)              # [1, T]
-        attention_mask = enc["attention_mask"].to(self.device)    # [1, T]
+        input_ids = enc["input_ids"].to(self.device)  # [1, T]
+        attention_mask = enc["attention_mask"].to(self.device)  # [1, T]
 
-        # predict
         with torch.no_grad():
             logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
             probs = F.softmax(logits, dim=-1)
@@ -232,21 +318,24 @@ class CaptumClassifierAttribution(ToolkitPlugin):
                 raise ValueError(f"target_index must be in [0, {num_labels-1}] for this model.")
             tgt_idx = int(target_index)
 
-        # embeddings
         embeddings_layer = model.get_input_embeddings()
         input_embeds = embeddings_layer(input_ids)  # [1, T, D]
 
-        # baseline for IG / DeepLift: PAD embeddings if possible else zeros
+        # baseline for baseline-based methods
         pad_id = tokenizer.pad_token_id
         if pad_id is not None:
             baseline_ids = torch.full_like(input_ids, pad_id)
             baseline_embeds = embeddings_layer(baseline_ids)
+            baseline_kind = "pad_embeddings"
         else:
             baseline_embeds = torch.zeros_like(input_embeds)
+            baseline_kind = "zeros"
 
-        # choose explainer
+        forward_fn = lambda emb, am: self._forward_from_embeds(model, emb, am)
+
+        # ---- choose explainer ----
         if algorithm == "IntegratedGradients":
-            explainer = IntegratedGradients(lambda emb, am: self._forward_from_embeds(model, emb, am))
+            explainer = IntegratedGradients(forward_fn)
             attributions = explainer.attribute(
                 inputs=input_embeds,
                 baselines=baseline_embeds,
@@ -254,21 +343,104 @@ class CaptumClassifierAttribution(ToolkitPlugin):
                 target=tgt_idx,
                 n_steps=n_steps,
             )
+
         elif algorithm == "Saliency":
-            explainer = Saliency(lambda emb, am: self._forward_from_embeds(model, emb, am))
+            explainer = Saliency(forward_fn)
             attributions = explainer.attribute(
                 inputs=input_embeds,
                 additional_forward_args=(attention_mask,),
                 target=tgt_idx,
             )
+
         elif algorithm == "DeepLift":
-            explainer = DeepLift(lambda emb, am: self._forward_from_embeds(model, emb, am))
+            explainer = DeepLift(forward_fn)
             attributions = explainer.attribute(
                 inputs=input_embeds,
                 baselines=baseline_embeds,
                 additional_forward_args=(attention_mask,),
                 target=tgt_idx,
             )
+
+        elif algorithm == "InputXGradient":
+            explainer = InputXGradient(forward_fn)
+            attributions = explainer.attribute(
+                inputs=input_embeds,
+                additional_forward_args=(attention_mask,),
+                target=tgt_idx,
+            )
+
+        elif algorithm == "GradientShap":
+            explainer = GradientShap(forward_fn)
+            attributions = explainer.attribute(
+                inputs=input_embeds,
+                baselines=baseline_embeds,
+                additional_forward_args=(attention_mask,),
+                target=tgt_idx,
+                n_samples=gs_samples,
+                stdevs=gs_stdev,
+            )
+
+        elif algorithm == "Occlusion":
+            explainer = Occlusion(forward_fn)
+            attributions = explainer.attribute(
+                inputs=input_embeds,
+                baselines=baseline_embeds,
+                additional_forward_args=(attention_mask,),
+                target=tgt_idx,
+                sliding_window_shapes=(occl_window, input_embeds.size(-1)),
+                strides=(1, input_embeds.size(-1)),
+            )
+
+        elif algorithm == "FeatureAblation":
+            explainer = FeatureAblation(forward_fn)
+            attributions = explainer.attribute(
+                inputs=input_embeds,
+                baselines=baseline_embeds,
+                additional_forward_args=(attention_mask,),
+                target=tgt_idx,
+            )
+
+        elif algorithm.startswith("NoiseTunnel(") and algorithm.endswith(")"):
+            base_name = algorithm[len("NoiseTunnel(") : -1].strip()
+
+            if base_name == "Saliency":
+                base = Saliency(forward_fn)
+                nt = NoiseTunnel(base)
+                attributions = nt.attribute(
+                    inputs=input_embeds,
+                    additional_forward_args=(attention_mask,),
+                    target=tgt_idx,
+                    nt_type=nt_type,
+                    nt_samples=nt_samples,
+                    stdevs=nt_stdev,
+                )
+            elif base_name == "IntegratedGradients":
+                base = IntegratedGradients(forward_fn)
+                nt = NoiseTunnel(base)
+                attributions = nt.attribute(
+                    inputs=input_embeds,
+                    baselines=baseline_embeds,
+                    additional_forward_args=(attention_mask,),
+                    target=tgt_idx,
+                    n_steps=n_steps,
+                    nt_type=nt_type,
+                    nt_samples=nt_samples,
+                    stdevs=nt_stdev,
+                )
+            elif base_name == "InputXGradient":
+                base = InputXGradient(forward_fn)
+                nt = NoiseTunnel(base)
+                attributions = nt.attribute(
+                    inputs=input_embeds,
+                    additional_forward_args=(attention_mask,),
+                    target=tgt_idx,
+                    nt_type=nt_type,
+                    nt_samples=nt_samples,
+                    stdevs=nt_stdev,
+                )
+            else:
+                raise ValueError(f"Unsupported NoiseTunnel base method: {base_name}")
+
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
 
@@ -278,25 +450,39 @@ class CaptumClassifierAttribution(ToolkitPlugin):
 
         raw_scores = token_attr.tolist()
 
-        # optional merge subwords
         if merge_subwords:
             tokens, raw_scores = _merge_wordpieces(tokens, raw_scores)
 
-        # normalized scores for display
         max_abs = max((abs(x) for x in raw_scores), default=1e-9)
         norm_scores = [float(x / (max_abs + 1e-9)) for x in raw_scores]
 
-        # label names
         pred_label = label_map.get(pred_idx, str(pred_idx)) if label_map else str(pred_idx)
         tgt_label = label_map.get(tgt_idx, str(tgt_idx)) if label_map else str(tgt_idx)
 
-        per_token = [
-            {"token": t, "attr_raw": float(a), "attr_norm": float(n)}
-            for t, a, n in zip(tokens, raw_scores, norm_scores)
-        ]
+        per_token = [{"token": t, "attr_raw": float(a), "attr_norm": float(n)} for t, a, n in zip(tokens, raw_scores, norm_scores)]
+
+        # record params relevant to chosen algorithm for reproducibility
+        algo_params: Dict[str, Any] = {"max_length": max_length, "merge_subwords": merge_subwords}
+
+        if algorithm in ("IntegratedGradients",):
+            algo_params.update({"n_steps": n_steps, "baseline": baseline_kind})
+
+        if algorithm in ("DeepLift", "FeatureAblation", "Occlusion", "GradientShap"):
+            algo_params.update({"baseline": baseline_kind})
+
+        if algorithm == "GradientShap":
+            algo_params.update({"gs_samples": gs_samples, "gs_stdev": gs_stdev})
+
+        if algorithm == "Occlusion":
+            algo_params.update({"occlusion_window": occl_window})
+
+        if algorithm.startswith("NoiseTunnel("):
+            algo_params.update({"nt_type": nt_type, "nt_samples": nt_samples, "nt_stdev": nt_stdev})
+            if algorithm == "NoiseTunnel(IntegratedGradients)":
+                algo_params.update({"n_steps": n_steps, "baseline": baseline_kind})
 
         return {
-            "plugin": self.id,
+            "plugin": self.id,  # IMPORTANT: each subclass has its own id
             "model": model_name,
             "device": self.device,
             "sentence": sentence,
@@ -304,6 +490,78 @@ class CaptumClassifierAttribution(ToolkitPlugin):
             "target": {"mode": target_mode, "idx": tgt_idx, "label": tgt_label},
             "predicted": {"idx": pred_idx, "label": pred_label, "probs": probs.squeeze(0).detach().cpu().tolist()},
             "num_labels": num_labels,
-            "params": {"n_steps": n_steps, "max_length": max_length, "merge_subwords": merge_subwords},
+            "params": algo_params,
             "attributions": per_token,
         }
+
+
+# ---------- One-plugin-per-method wrappers (REGISTER THESE) ----------
+class CaptumIGClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_ig_classifier"
+    name = "Captum — Integrated Gradients (Classifier)"
+    FIXED_ALGO = "IntegratedGradients"
+    # show n_steps; hide others
+    DROP_FIELDS = {"nt_type", "nt_samples", "nt_stdev", "gs_samples", "gs_stdev", "occlusion_window"}
+
+
+class CaptumSaliencyClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_saliency_classifier"
+    name = "Captum — Saliency (Classifier)"
+    FIXED_ALGO = "Saliency"
+    DROP_FIELDS = {"n_steps", "nt_type", "nt_samples", "nt_stdev", "gs_samples", "gs_stdev", "occlusion_window"}
+
+
+class CaptumDeepLiftClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_deeplift_classifier"
+    name = "Captum — DeepLift (Classifier)"
+    FIXED_ALGO = "DeepLift"
+    DROP_FIELDS = {"n_steps", "nt_type", "nt_samples", "nt_stdev", "gs_samples", "gs_stdev", "occlusion_window"}
+
+
+class CaptumInputXGradientClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_inputxgradient_classifier"
+    name = "Captum — Input×Gradient (Classifier)"
+    FIXED_ALGO = "InputXGradient"
+    DROP_FIELDS = {"n_steps", "nt_type", "nt_samples", "nt_stdev", "gs_samples", "gs_stdev", "occlusion_window"}
+
+
+class CaptumGradientShapClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_gradientshap_classifier"
+    name = "Captum — GradientShap (Classifier)"
+    FIXED_ALGO = "GradientShap"
+    DROP_FIELDS = {"n_steps", "nt_type", "nt_samples", "nt_stdev", "occlusion_window"}
+
+
+class CaptumOcclusionClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_occlusion_classifier"
+    name = "Captum — Occlusion (Classifier)"
+    FIXED_ALGO = "Occlusion"
+    DROP_FIELDS = {"n_steps", "nt_type", "nt_samples", "nt_stdev", "gs_samples", "gs_stdev"}
+
+
+class CaptumFeatureAblationClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_featureablation_classifier"
+    name = "Captum — Feature Ablation (Classifier)"
+    FIXED_ALGO = "FeatureAblation"
+    DROP_FIELDS = {"n_steps", "nt_type", "nt_samples", "nt_stdev", "gs_samples", "gs_stdev", "occlusion_window"}
+
+
+class CaptumNoiseTunnelSaliencyClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_noisetunnel_saliency_classifier"
+    name = "Captum — NoiseTunnel(Saliency) (Classifier)"
+    FIXED_ALGO = "NoiseTunnel(Saliency)"
+    DROP_FIELDS = {"n_steps", "gs_samples", "gs_stdev", "occlusion_window"}
+
+
+class CaptumNoiseTunnelIGClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_noisetunnel_ig_classifier"
+    name = "Captum — NoiseTunnel(Integrated Gradients) (Classifier)"
+    FIXED_ALGO = "NoiseTunnel(IntegratedGradients)"
+    DROP_FIELDS = {"gs_samples", "gs_stdev", "occlusion_window"}
+
+
+class CaptumNoiseTunnelInputXGradClassifierAttribution(_CaptumClassifierBase):
+    id = "captum_noisetunnel_inputxgrad_classifier"
+    name = "Captum — NoiseTunnel(Input×Gradient) (Classifier)"
+    FIXED_ALGO = "NoiseTunnel(InputXGradient)"
+    DROP_FIELDS = {"n_steps", "gs_samples", "gs_stdev", "occlusion_window"}

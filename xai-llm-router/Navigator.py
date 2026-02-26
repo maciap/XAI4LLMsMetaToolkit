@@ -14,12 +14,18 @@ import plotly.express as px
 
 from text_to_score import rank_methods
 # from toolkits.captum_classifier import CaptumClassifierAttribution
-from toolkits.captum_classifier_methods import (
+from toolkits.captum_classifier import (
     CaptumIGClassifierAttribution,
     CaptumSaliencyClassifierAttribution,
     CaptumDeepLiftClassifierAttribution,
+    CaptumInputXGradientClassifierAttribution,
+    CaptumGradientShapClassifierAttribution,
+    CaptumOcclusionClassifierAttribution,
+    CaptumFeatureAblationClassifierAttribution,
+    CaptumNoiseTunnelSaliencyClassifierAttribution,
+    CaptumNoiseTunnelIGClassifierAttribution,
+    CaptumNoiseTunnelInputXGradClassifierAttribution,
 )
-
 from toolkits.bertviz_attention import BertVizAttention
 from toolkits.logit_lens import LogitLens
 from toolkits.alibi_anchors_text import AlibiAnchorsText
@@ -125,6 +131,16 @@ def get_plugins():
     plugin14 = CCALayers()
     plugin25 = AttentionRollout()
 
+
+    plugin26 = CaptumInputXGradientClassifierAttribution()
+    plugin27 = CaptumGradientShapClassifierAttribution()
+    plugin28 = CaptumOcclusionClassifierAttribution()
+    plugin29 = CaptumFeatureAblationClassifierAttribution()
+    plugin30 = CaptumNoiseTunnelSaliencyClassifierAttribution()
+    plugin31 = CaptumNoiseTunnelIGClassifierAttribution()
+    plugin32 = CaptumNoiseTunnelInputXGradClassifierAttribution()
+
+
     return {
         plugin1.id: plugin1,
         plugin2.id: plugin2,
@@ -133,7 +149,6 @@ def get_plugins():
         plugin5.id: plugin5,
         plugin6.id: plugin6,
 
-        # Inseq
         plugin7.id: plugin7,
         plugin8.id: plugin8,
         plugin15.id: plugin15,
@@ -154,6 +169,16 @@ def get_plugins():
         plugin13.id: plugin13,
         plugin14.id: plugin14,
         plugin25.id: plugin25,
+
+
+        plugin26.id: plugin26,
+        plugin27.id: plugin27,
+        plugin28.id: plugin28,
+        plugin29.id: plugin29,
+        plugin30.id: plugin30,
+        plugin31.id: plugin31,
+        plugin32.id: plugin32,
+
     }
 
 
@@ -598,7 +623,6 @@ with col_recs:
             if item.get("mismatched"):
                 st.caption("⚠️ Mismatches: " + "; ".join(item["mismatched"]))
 
-            # NOTE: Select is ALWAYS available now (even if plugin_id is None)
             cA, cB = st.columns([1, 1], gap="medium")
 
             with cA:
@@ -642,7 +666,6 @@ with col_run:
     else:
         # Always show the card (even if not runnable)
         render_selected_tool_card(selected_item)
-
         #st.markdown("#### ✅/⚠️ Preference fit for this tool")
         #m1, m2 = st.columns(2, gap="large")
         #with m1:
@@ -661,7 +684,6 @@ with col_run:
         #        st.caption("No preference mismatches.")
 
         st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
-
         # If the selected tool has no runnable plugin, stop here (still comparable!)
         if not selected_plugin_id:
             #st.info("This tool is not runnable in the UI yet (no plugin connected). You can still compare its metadata/strengths/limitations.")
@@ -688,7 +710,14 @@ with col_run:
                     "captum_ig_classifier",
                     "captum_saliency_classifier",
                     "captum_deeplift_classifier",
-                ) and outputs.get("attributions"):
+                    "captum_inputxgradient_classifier",
+                    "captum_gradientshap_classifier",
+                    "captum_occlusion_classifier",
+                    "captum_featureablation_classifier",
+                    "captum_noisetunnel_saliency_classifier",
+                    "captum_noisetunnel_ig_classifier",
+                    "captum_noisetunnel_inputxgrad_classifier",
+                    ):
                     render_captum_result(outputs, selected_item)
 
                 elif outputs and outputs.get("plugin") == "bertviz_attention" and outputs.get("html"):
