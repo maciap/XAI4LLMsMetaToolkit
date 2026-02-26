@@ -1,0 +1,60 @@
+ {
+      "name": "Integrated Gradients (IG)",
+      "task_input": ["generation"],
+      "access_arch": {"access": ["white_box"], "arch": ["all"]},
+      "target_scope": "local",
+      "accessibility": "non experts", 
+      "description": {
+        "overview": "Integrated Gradients (IG) attributes a model’s prediction to input tokens by integrating gradients along a path from a baseline to the actual input. It produces per-token attributions for the target output.",
+        "main_functionalities": [
+          "Compute token-level importance by integrating gradients from a baseline",
+          "Support configurable number of integration steps",
+          "Applicable to any differentiable model (white-box access required)"
+        ]
+      },
+      "strengths": [
+        "Satisfies axioms of sensitivity and implementation invariance【60†L23-L32】",
+        "More stable and less noisy than raw gradients",
+        "Provides intuitive baseline comparison ('change from reference to input')"
+      ],
+      "limitations": [
+        "Requires choosing a baseline, which affects results【60†L23-L32】",
+        "Computationally expensive due to multiple forward/backward passes",
+        "Correlational attribution (not strictly causal without interventions)"
+      ],
+      "research_applications": [
+        {
+          "used_in": "Axiomatic Attribution for Deep Networks",
+          "type": "paper",
+          "year": 2017,
+          "source": "ICML",
+          "url": "https://dl.acm.org/doi/10.5555/3305890.3306024",
+          "note": "Introduces the Integrated Gradients method."
+        },
+        {
+          "used_in": "Captum Documentation (GitHub)",
+          "type": "docs",
+          "year": 2023,
+          "source": "Facebook AI Research",
+          "url": "https://captum.ai/api/integrated_gradients.html",
+          "note": "Details the Integrated Gradients implementation in Captum."
+        }, 
+        {
+          "used_in": "ferret: a Framework for Benchmarking Explainers on Transformers",
+          "type": "paper",
+          "year": 2023,
+          "source": "Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics: System Demonstrations",
+          "url": "https://dl.acm.org/doi/10.1145/2939672.2939778",
+          "note": "Introduces the ferret toolkit which leverages feature attribution approaches like Integrated Gradients to support the interpretation of individual model predictions."
+        }, 
+        {
+          "used_in": "The Language Interpretability Tool: Extensible, Interactive Visualizations and Analysis for {NLP} Models",
+          "type": "paper",
+          "year": 2020,
+          "source": "Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations (EMNLP)",
+          "url": "https://doi.org/10.18653/v1/2020.emnlp-demos.15",
+          "note": "Introduces the LIT toolkit which implements Integrated Gradients."
+        }
+      ],
+      "typical_cost": "medium"
+    }

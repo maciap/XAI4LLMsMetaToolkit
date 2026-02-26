@@ -520,6 +520,7 @@ if mode == "Pick with filters":
             {
                 "name": m.get("name", "NA"),
                 "plugin_id": m.get("plugin_id"),  # may be None (still selectable + comparable)
+                "implementation": m.get("implementation"),
                 "score": float(sc),
                 "matched": matched,
                 "mismatched": mismatched,
@@ -574,6 +575,7 @@ else:
                 {
                     "name": item["name"],
                     "plugin_id": m.get("plugin_id"),  # may be None
+                    "implementation": m.get("implementation"), 
                     "score": float(item["final_score"]),
                     "matched": ["🧠 text match"] + matched,
                     "mismatched": mismatched,
@@ -932,9 +934,95 @@ with col_run:
 
                 elif outputs and outputs.get("plugin") == "sae_feature_explorer":
                     st.subheader("Result")
-                    # (unchanged body from your original; kept short here on purpose)
-                    st.json(outputs, expanded=False)
-                    render_downloads(outputs, selected_item=selected_item)
+                    with st.expander("ℹ️ How to read Sparse Autoencoders (SAELens + Neuronpedia)", expanded=True):
+                        st.write(
+                            "- A **Sparse Autoencoder (SAE)** learns a set of directions (called **features**) in a model’s hidden activations.\n"
+                            "- For each token position, the SAE **encodes** the model activation into a sparse vector of **feature activations**.\n"
+                            "- Each row in **Top activating SAE features** is:\n"
+                            "  - **feature_id**: the index of a learned feature (a latent direction)\n"
+                            "  - **activation**: how strongly that feature is present at the selected token position\n\n"
+                            "**Interpretation tips:**\n"
+                            "- Higher **activation** ⇒ the feature is more strongly present for that token at this layer/hook.\n"
+                            "- Features are **not labels** by default. To understand a feature, you usually inspect:\n"
+                            "  1) which tokens/contexts make it fire (top examples), and\n"
+                            "  2) which tokens in *your input* activate it.\n"
+                            "- A single feature can sometimes be **polysemantic** (fires on multiple unrelated patterns), "
+                            "especially if the SAE is small or sparsity is weak.\n\n"
+                            "**What 'Position' means:**\n"
+                            "- The position is a **token index** (0-based). `-1` means the **last token**.\n"
+                            "- The activations shown are computed at the SAE’s hook point (e.g. `blocks.6.hook_resid_pre`).\n\n"
+                            "**Per-token view (if enabled):**\n"
+                            "- Shows the top features for *each* token position (useful for seeing where features fire across the sentence).\n\1"
+                            "- We also embed Neuronpedia dashboards for selected features. These dashboards show corpus-level information (such as top activating examples, explanations, and activation statistics) which helps attach semantic meaning to a feature beyond this single input."
+                        )
+
+                    st.write(f"**Model:** {outputs.get('model')}")
+                    st.write(f"**SAE:** {outputs.get('release')} / {outputs.get('sae_id')}")
+                    st.write(f"**Position:** {outputs.get('position')}")
+
+                    toks = outputs.get("tokens", [])
+                    pos = outputs.get("position", 0)
+
+                    if isinstance(toks, str):
+                        toks = [toks]  # prevent char-by-char enumerate
+
+                    if toks:
+                        st.caption("Tokenization (index:token)")
+                        st.code(" ".join([f"{i}:{t}" for i, t in enumerate(toks)]))
+
+                        # nice: highlight selected position
+                        if isinstance(pos, int) and 0 <= pos < len(toks):
+                            st.caption("Selected token position")
+                            st.markdown(" ".join([f"**[{t}]**" if i == pos else t for i, t in enumerate(toks)]))
+
+                    st.markdown("### Top activating SAE features at this position")
+                    df = pd.DataFrame(outputs.get("top_features", []))
+                    st.dataframe(df, use_container_width=True)
+
+                    # Optional: bar plot
+                    figs = None
+                    if not df.empty and "activation" in df.columns and "feature_id" in df.columns:
+                        fig = plt.figure()
+                        plt.bar(range(len(df)), df["activation"].tolist())
+                        plt.xticks(range(len(df)), df["feature_id"].astype(str).tolist(), rotation=45, ha="right")
+                        plt.ylabel("SAE feature activation")
+                        plt.title("Top SAE features at selected token position")
+                        plt.tight_layout()
+                        st.pyplot(fig)
+                        figs = {f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_top_features.png": fig}
+
+                    if outputs.get("per_token"):
+                        st.markdown("### Per-token top features (k=5)")
+                        st.json(outputs.get("per_token_top", [])[:20])
+
+                    # Downloads before embeds (embeds aren't downloadable anyway)
+                    render_downloads(outputs, selected_item=selected_item, figs=figs)
+
+                    # --- Neuronpedia integration (Level 1) -
+                    # 
+                    # --
+                    print("neuronpedia") 
+                    np = outputs.get("neuronpedia", {}) or {}
+                    if np.get("enabled") and np.get("feature_urls"):
+                        with st.expander("🧠 Neuronpedia feature dashboards", expanded=False):
+                            st.caption(
+                                "These dashboards are hosted on Neuronpedia and help interpret SAE features "
+                                "(example contexts, explanations, and activation tests)."
+                            )
+
+                            max_n = min(10, len(np["feature_urls"]))
+                            slider_key = f"np_show_n__{outputs.get('sae_id','na')}__pos{pos}"
+                            show_n = st.slider("How many dashboards to embed", 1, max_n, min(3, max_n), key=slider_key)
+
+                            for item in np["feature_urls"][:show_n]:
+                                fid = item["feature_id"]
+                                url = item["url"]
+                                st.markdown(f"#### Feature {fid}")
+                                components.iframe(url, height=560, scrolling=True)
+                    else:
+                        st.caption("Neuronpedia dashboards not available for this SAE release / id.")
+                        st.json(outputs, expanded=False)
+                        render_downloads(outputs, selected_item=selected_item)
 
                 elif outputs and str(outputs.get("plugin", "")).startswith("inseq_") and outputs.get("out"):
                     import re
@@ -974,28 +1062,360 @@ with col_run:
 
                 elif outputs and outputs.get("plugin") == "meta_transparency_graph":
                     st.subheader("Result")
-                    st.json(outputs, expanded=False)
+                    tokens = outputs.get("tokens", [])
+                    graph = outputs.get("graph_data")  # <-- dict now
+                    model_info = outputs.get("model_info")
+
+                    st.caption(
+                        f"Model: {outputs.get('model','NA')} · "
+                        f"layers={getattr(model_info,'n_layers','NA')} · "
+                        f"focus_token={outputs.get('focus_token_index','NA')} · "
+                        f"threshold={outputs.get('threshold','NA')}"
+                    )
+
+                    if not graph or not isinstance(graph, dict):
+                        st.error("graph_data is missing or not a dict. Showing raw outputs:")
+                        st.json(outputs, expanded=False)
+                    elif not graph.get("edges"):
+                        st.warning("Graph has no edges (try lowering threshold).")
+                        st.json(graph, expanded=False)
+                    else:
+                        with st.expander("Tokenization (index:token)", expanded=False):
+                            st.code(" ".join([f"{i}:{t}" for i, t in enumerate(tokens)]))
+
+                        n_layers = int(getattr(model_info, "n_layers", 0) or 0)
+                        render_meta_graph_svg(tokens=tokens, graph=graph, n_layers=n_layers, height_px=720)
+
                     render_downloads(outputs, selected_item=selected_item)
 
                 elif outputs and outputs.get("plugin") == "embedding_pca_layers" and outputs.get("projected"):
                     st.subheader("Result")
-                    st.json(outputs, expanded=False)
-                    render_downloads(outputs, selected_item=selected_item)
+                    # --- explainer ---
+                    with st.expander("ℹ️ How to read this PCA view", expanded=True):
+                        st.write(
+                            "- We project each token’s vector into PCA space.\n"
+                            "- **Single basis**: PCA is fit once (default: last layer) and reused → plots are comparable across layers.\n"
+                            "- **Per-layer basis**: PCA is fit separately per layer → shows within-layer structure but axes are not comparable.\n"
+                            "- Tokens are labeled by their tokenizer output; subword tokens may look like 'Ġword' (GPT-2) or '##ing' (BERT).\n"
+                            "- In 3D, labels can be occluded; hover always shows token strings."
+                        )
+
+                    st.write(f"**Model:** {outputs.get('model','NA')}")
+                    params = outputs.get("params", {}) or {}
+                    st.caption(
+                        f"basis_mode={params.get('basis_mode','NA')} · "
+                        f"fit_on={params.get('single_basis_fit_on','NA')} · "
+                        f"max_length={params.get('max_length','NA')} · "
+                        f"drop_special_tokens={params.get('drop_special_tokens','NA')}"
+                    )
+
+                    # --- tokenization preview ---
+                    toks = outputs.get("tokens", []) or []
+                    if toks:
+                        with st.expander("Tokenization (index:token)", expanded=False):
+                            st.code(" ".join([f"{i}:{t}" for i, t in enumerate(toks)]))
+
+                    projected = outputs["projected"]
+                    max_layer = len(projected) - 1
+
+                    # nicer default: show last layer
+                    layer_idx = st.slider(
+                        "Layer index (includes embeddings at 0)",
+                        0,
+                        max_layer,
+                        max_layer,
+                        key="pca_layers__layer_idx",
+                    )
+
+                    layer_obj = projected[layer_idx]
+                    df = pd.DataFrame(layer_obj.get("rows", []))
+
+                    # pca info differs depending on mode
+                    pca_info = layer_obj.get("pca_info", {}) or {}
+                    evr = pca_info.get("explained_variance_ratio", None)
+                    if evr and isinstance(evr, (list, tuple)) and len(evr) >= 2:
+                        st.caption(
+                            f"PCA variance explained: PC1={float(evr[0]):.3f}, PC2={float(evr[1]):.3f} "
+                            f"(method={pca_info.get('method','NA')}, fit_on={pca_info.get('fit_on','NA')})"
+                        )
+                    else:
+                        st.caption(f"PCA: method={pca_info.get('method','NA')} · fit_on={pca_info.get('fit_on','NA')}")
+
+                    if df.empty:
+                        st.warning("No PCA rows returned.")
+                        st.json(layer_obj, expanded=False)
+                    else:
+                        # show cols depending on pc3 availability
+                        cols = ["i", "token", "token_id", "pc1", "pc2"] + (["pc3"] if "pc3" in df.columns else [])
+                        st.dataframe(df[cols], use_container_width=True)
+
+                        # --- plot controls ---
+                        c1, c2, c3, c4 = st.columns([1.0, 1.0, 1.0, 1.2], gap="medium")
+                        with c1:
+                            show_labels_2d = st.checkbox("Label points with tokens (2D)", value=True, key="pca_layers__labels_2d")
+                        with c2:
+                            label_every_2d = st.slider("2D label every N tokens", 1, 8, 1, key="pca_layers__label_every_2d")
+                        with c3:
+                            point_size = st.slider("Point size", 10, 80, 35, key="pca_layers__ptsize")
+                        with c4:
+                            show_3d = st.checkbox("Show interactive 3D (drag)", value=True, key="pca_layers__show_3d")
+
+                        # -------------------------
+                        # 2D scatter (matplotlib)
+                        # -------------------------
+                        fig = plt.figure()
+                        plt.scatter(df["pc1"].values, df["pc2"].values, s=int(point_size))
+                        plt.xlabel("PC1")
+                        plt.ylabel("PC2")
+                        plt.title(f"Token representations in PCA space — layer {layer_idx}")
+
+                        if show_labels_2d:
+                            for _, r in df.iterrows():
+                                if int(r["i"]) % int(label_every_2d) != 0:
+                                    continue
+                                plt.text(float(r["pc1"]), float(r["pc2"]), str(r["token"]), fontsize=8)
+
+                        plt.tight_layout()
+                        st.pyplot(fig)
+
+                        # -------------------------
+                        # 3D scatter (plotly, draggable) + token strings (hover + optional visible labels)
+                        # -------------------------
+                        if show_3d:
+                            if "pc3" not in df.columns:
+                                st.info(
+                                    "3D view requires `pc3` in the plugin outputs. "
+                                    "Update the PCA plugin to return 3 components (pc1, pc2, pc3) for each layer."
+                                )
+                            else:
+                                # extra UI for 3D labeling
+                                d1, d2, d3 = st.columns([1.0, 1.0, 1.2], gap="medium")
+                                with d1:
+                                    show_3d_labels = st.checkbox("Show token labels in 3D", value=False, key="pca_layers__3d_labels")
+                                with d2:
+                                    label_every_3d = st.slider("3D label every N tokens", 1, 12, 3, key="pca_layers__label_every_3d")
+                                with d3:
+                                    marker_size_3d = st.slider("3D marker size", 2, 12, 5, key="pca_layers__marker_size_3d")
+
+                                df3 = df.copy()
+                                if show_3d_labels:
+                                    df3["text_label"] = df3.apply(
+                                        lambda r: str(r["token"]) if (int(r["i"]) % int(label_every_3d) == 0) else "",
+                                        axis=1,
+                                    )
+                                else:
+                                    df3["text_label"] = ""
+
+                                # IMPORTANT: hover_name ensures token string shows on hover
+                                fig3d = px.scatter_3d(
+                                    df3,
+                                    x="pc1",
+                                    y="pc2",
+                                    z="pc3",
+                                    hover_name="token",
+                                    hover_data={"i": True, "token_id": True, "pc1": ":.4f", "pc2": ":.4f", "pc3": ":.4f"},
+                                )
+
+                                # IMPORTANT: mode markers+text is what makes labels visible in 3D
+                                fig3d.update_traces(
+                                    mode="markers+text" if show_3d_labels else "markers",
+                                    text=df3["text_label"],
+                                    textposition="top center",
+                                    marker=dict(size=int(marker_size_3d)),
+                                    hovertemplate=(
+                                        "<b>%{hovertext}</b><br>"
+                                        "i=%{customdata[0]}<br>"
+                                        "token_id=%{customdata[1]}<br>"
+                                        "pc1=%{x:.4f}<br>"
+                                        "pc2=%{y:.4f}<br>"
+                                        "pc3=%{z:.4f}<extra></extra>"
+                                    ),
+                                )
+
+                                fig3d.update_layout(
+                                    height=720,
+                                    title=f"Token representations in 3D PCA space — layer {layer_idx}",
+                                    margin=dict(l=0, r=0, t=50, b=0),
+                                )
+
+                                st.plotly_chart(fig3d, use_container_width=True)
+
+                        # ✅ Downloads (2D plot as PNG; JSON always available via render_downloads)
+                        figs_to_download = {
+                            f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_pca_layer_{layer_idx}_2d.png": fig
+                        }
+                        render_downloads(outputs, selected_item=selected_item, figs=figs_to_download)
+
 
                 elif outputs and outputs.get("plugin") == "linear_cka_layers" and outputs.get("cka_matrix"):
                     st.subheader("Result")
-                    st.json(outputs, expanded=False)
-                    render_downloads(outputs, selected_item=selected_item)
+                    with st.expander("ℹ️ How to read Linear CKA", expanded=True):
+                        st.write(
+                            "- **Linear CKA** measures similarity between two representation sets (here: token vectors) from different layers.\n"
+                            "- Values are in **[0, 1]** (higher = more similar).\n"
+                            "- We compute it using feature-centering and the linear CKA formula based on Frobenius norms.\n"
+                            "- Layer labels: **emb** = embedding output, **Lk** = transformer block k."
+                        )
+
+                    st.write(f"**Model:** {outputs.get('model','NA')} (arch={outputs.get('arch_used','NA')})")
+                    params = outputs.get("params", {}) or {}
+                    st.caption(
+                        f"token_subset={params.get('token_subset','NA')} · "
+                        f"max_tokens_used={params.get('max_tokens_used','NA')} · "
+                        f"max_length={params.get('max_length','NA')} · "
+                        f"compute_on_cpu={params.get('compute_on_cpu','NA')}"
+                    )
+
+                    toks = outputs.get("tokens", []) or []
+                    used = outputs.get("token_indices_used", []) or []
+                    if toks and used:
+                        with st.expander("Token indices used (index:token)", expanded=False):
+                            st.code(" ".join([f"{i}:{toks[i]}" for i in used if 0 <= i < len(toks)]))
+
+                    import numpy as np
+                    import plotly.express as px
+                    import matplotlib.pyplot as plt
+                    import pandas as pd
+
+                    M = np.array(outputs["cka_matrix"], dtype=float)
+                    labels = outputs.get("layer_labels", [str(i) for i in range(M.shape[0])])
+
+                    # Plotly interactive heatmap (VISIBLE)
+                    fig = px.imshow(
+                        M,
+                        x=labels,
+                        y=labels,
+                        zmin=0.0,
+                        zmax=1.0,
+                        color_continuous_scale="viridis",
+                        aspect="auto",
+                        title="Linear CKA similarity across layers",
+                    )
+                    fig.update_layout(height=720, margin=dict(l=10, r=10, t=60, b=10))
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    # Tabular view
+                    df = pd.DataFrame(M, index=labels, columns=labels)
+                    with st.expander("Matrix values", expanded=False):
+                        st.dataframe(df, use_container_width=True)
+
+                    # --- Hidden matplotlib heatmap (for download only) ---
+                    fig2 = plt.figure()
+                    plt.imshow(M, vmin=0.0, vmax=1.0, cmap="viridis")
+                    plt.xticks(range(len(labels)), labels, rotation=45, ha="right")
+                    plt.yticks(range(len(labels)), labels)
+                    plt.title("Linear CKA similarity across layers")
+                    plt.tight_layout()
+
+                    # DO NOT call st.pyplot(fig2)  ← this removes the yellow display
+
+                    render_downloads(
+                        outputs,
+                        selected_item=selected_item,
+                        figs={
+                            f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_cka_heatmap.png": fig2
+                        },
+                    )
 
                 elif outputs and outputs.get("plugin") == "cca_layers" and outputs.get("cca_matrix"):
                     st.subheader("Result")
-                    st.json(outputs, expanded=False)
-                    render_downloads(outputs, selected_item=selected_item)
+                    with st.expander("ℹ️ How to read CCA", expanded=True):
+                        st.write(
+                            "- **CCA** measures linear similarity between two representation sets (token vectors) from different layers.\n"
+                            "- Values are in **[0, 1]** (higher = more similar).\n"
+                            "- We compute it via Google's SVCCA `cca_core.get_cca_similarity` and return **mean canonical correlation**.\n"
+                            "- Because SVCCA-CCA requires `neurons < tokens`, we SVD-reduce the neuron dimension to `tokens-1` when needed.\n"
+                            "- Layer labels: **emb** = embedding output, **Lk** = transformer block k."
+                        )
+
+                    st.write(f"**Model:** {outputs.get('model','NA')} (arch={outputs.get('arch_used','NA')})")
+                    params = outputs.get("params", {}) or {}
+                    st.caption(
+                        f"token_subset={params.get('token_subset','NA')} · "
+                        f"max_tokens_used={params.get('max_tokens_used','NA')} · "
+                        f"max_length={params.get('max_length','NA')} · "
+                        f"compute_on_cpu={params.get('compute_on_cpu','NA')} · "
+                        f"svd_reduce_to={params.get('svd_reduce_to','NA')} · "
+                        f"epsilon={params.get('epsilon','NA')}"
+                    )
+
+                    toks = outputs.get("tokens", []) or []
+                    used = outputs.get("token_indices_used", []) or []
+                    if toks and used:
+                        with st.expander("Token indices used (index:token)", expanded=False):
+                            st.code(" ".join([f"{i}:{toks[i]}" for i in used if 0 <= i < len(toks)]))
+
+                    import numpy as np
+                    import plotly.express as px
+                    import matplotlib.pyplot as plt
+                    import pandas as pd
+
+                    M = np.array(outputs["cca_matrix"], dtype=float)
+                    labels = outputs.get("layer_labels", [str(i) for i in range(M.shape[0])])
+
+                    # Visible interactive heatmap
+                    fig = px.imshow(
+                        M,
+                        x=labels,
+                        y=labels,
+                        zmin=0.0,
+                        zmax=1.0,
+                        color_continuous_scale="viridis",
+                        aspect="auto",
+                        title="CCA similarity across layers (mean canonical correlation)",
+                    )
+                    fig.update_layout(height=720, margin=dict(l=10, r=10, t=60, b=10))
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    # Values table
+                    df = pd.DataFrame(M, index=labels, columns=labels)
+                    with st.expander("Matrix values", expanded=False):
+                        st.dataframe(df, use_container_width=True)
+
+                    # Download-only matplotlib heatmap
+                    fig2 = plt.figure()
+                    plt.imshow(M, vmin=0.0, vmax=1.0, cmap="viridis")
+                    plt.xticks(range(len(labels)), labels, rotation=45, ha="right")
+                    plt.yticks(range(len(labels)), labels)
+                    plt.title("CCA similarity across layers")
+                    plt.tight_layout()
+
+                    render_downloads(
+                        outputs,
+                        selected_item=selected_item,
+                        figs={f"{_make_prefix(selected_item, outputs.get('plugin','unknown'))}_cca_heatmap.png": fig2},
+                    )
+
+
 
                 elif outputs and outputs.get("plugin") == "attention_rollout" and outputs.get("token_scores"):
                     st.subheader("Result")
-                    st.json(outputs, expanded=False)
+                    with st.expander("ℹ️ How to read Attention Rollout", expanded=True):
+                        st.write(
+                            "- Attention rollout multiplies attention matrices across layers (with residual connections) to estimate token-to-token influence.\n"
+                            "- The scores below show which **source tokens** contribute most to the selected **target token** through attention pathways.\n"
+                            "- Scores are normalized to [0,1] for display."
+                        )
+
+                    st.write(f"**Model:** {outputs.get('model','NA')}")
+                    st.write(f"**Target token index:** {outputs.get('target_token_index','NA')}")
+
+                    toks = outputs.get("tokens", [])
+                    scores = outputs.get("token_scores", [])
+
+                    # Highlight tokens (treat as nonnegative importance)
+                    render_token_highlight(
+                        tokens=toks,
+                        scores=scores,          # all >= 0
+                        title="🖍️ Highlighted text (attention rollout relevance)",
+                        max_abs=1.0,
+                    )
+
+                    with st.expander("Top source tokens", expanded=False):
+                        st.dataframe(pd.DataFrame(outputs.get("top_sources", [])), use_container_width=True)
+
                     render_downloads(outputs, selected_item=selected_item)
+                        
 
     # -------------------------
     # Compare tools (NEW DESIGN)

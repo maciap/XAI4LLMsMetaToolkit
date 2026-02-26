@@ -1,65 +1,5 @@
 {
   "toolkits": [
-    {
-      "name": "Integrated Gradients (IG)",
-      "task_input": ["generation"],
-      "access_arch": {"access": ["white_box"], "arch": ["all"]},
-      "target_scope": "local",
-      "accessibility": "non experts", 
-      "description": {
-        "overview": "Integrated Gradients (IG) attributes a model’s prediction to input tokens by integrating gradients along a path from a baseline to the actual input. It produces per-token attributions for the target output.",
-        "main_functionalities": [
-          "Compute token-level importance by integrating gradients from a baseline",
-          "Support configurable number of integration steps",
-          "Applicable to any differentiable model (white-box access required)"
-        ]
-      },
-      "strengths": [
-        "Satisfies axioms of sensitivity and implementation invariance【60†L23-L32】",
-        "More stable and less noisy than raw gradients",
-        "Provides intuitive baseline comparison ('change from reference to input')"
-      ],
-      "limitations": [
-        "Requires choosing a baseline, which affects results【60†L23-L32】",
-        "Computationally expensive due to multiple forward/backward passes",
-        "Correlational attribution (not strictly causal without interventions)"
-      ],
-      "research_applications": [
-        {
-          "used_in": "Axiomatic Attribution for Deep Networks",
-          "type": "paper",
-          "year": 2017,
-          "source": "ICML",
-          "url": "https://dl.acm.org/doi/10.5555/3305890.3306024",
-          "note": "Introduces the Integrated Gradients method."
-        },
-        {
-          "used_in": "Captum Documentation (GitHub)",
-          "type": "docs",
-          "year": 2023,
-          "source": "Facebook AI Research",
-          "url": "https://captum.ai/api/integrated_gradients.html",
-          "note": "Details the Integrated Gradients implementation in Captum."
-        }, 
-        {
-          "used_in": "ferret: a Framework for Benchmarking Explainers on Transformers",
-          "type": "paper",
-          "year": 2023,
-          "source": "Proceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics: System Demonstrations",
-          "url": "https://dl.acm.org/doi/10.1145/2939672.2939778",
-          "note": "Introduces the ferret toolkit which leverages feature attribution approaches like Integrated Gradients to support the interpretation of individual model predictions."
-        }, 
-        {
-          "used_in": "The Language Interpretability Tool: Extensible, Interactive Visualizations and Analysis for {NLP} Models",
-          "type": "paper",
-          "year": 2020,
-          "source": "Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations (EMNLP)",
-          "url": "https://doi.org/10.18653/v1/2020.emnlp-demos.15",
-          "note": "Introduces the LIT toolkit which implements Integrated Gradients."
-        }
-      ],
-      "typical_cost": "medium"
-    },
      {
       "name": "Integrated Gradients (IG)",
       "plugin_id": "captum_ig_classifier",
@@ -122,48 +62,34 @@
       "typical_cost": "medium"
     },
     {
-      "name": "Layer Conductance",
-      "task_input": ["classification", "generation"],
-      "access_arch": {"access": ["white_box"], "arch": ["all"]},
-      "target_scope": "local",
-      "accessibility": "mid experts",
-      "description": {
-        "overview": "Layer Integrated Gradients applies the IG approach to internal model layers instead of inputs. It attributes importance to activations of a chosen intermediate layer.",
-        "main_functionalities": [
-          "Compute attributions for internal layer inputs or outputs",
-          "Enable analysis of intermediate representations"
-        ]
-      },
-      "strengths": [],
-      "limitations": [],
-      "research_applications": [
-        {
-          "used_in": "Captum Documentation (GitHub)",
-          "type": "docs",
-          "year": 2023,
-          "source": "Facebook AI Research",
-          "url": "https://captum.ai/api/layer_integrated_gradients.html",
-          "note": "Documents the layer-wise IG method in Captum."
-        }
-      ],
-      "typical_cost": "high"
-    },
-    {
       "name": "Layer Integrated Gradients",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
       "accessibility": "mid experts",
       "description": {
-        "overview": "Layer Integrated Gradients applies the IG approach to internal model layers instead of inputs. It attributes importance to activations of a chosen intermediate layer.",
-        "main_functionalities": [
+        "overview": "Layer Integrated Gradients is a variation of Integrated Gradients that computes importance scores for the inputs or outputs of a specific layer, rather than for the original input features. In contrast, Integrated Gradients assigns an importance score to each input feature by approximating the integral of the gradients of the model’s output with respect to those inputs along a path from chosen reference inputs to the actual inputs.",
+          "main_functionalities": [
           "Compute attributions for internal layer inputs or outputs",
           "Enable analysis of intermediate representations"
         ]
       },
-      "strengths": [],
-      "limitations": [],
+      "strengths": [  "Like integrated gradients, provides theoretically grounded attributions satisfying axioms",
+    "Enables interpretability of intermediate representations rather than only input features",
+    "More stable than raw gradient-based methods due to path integration",
+    "Can be combined with token-level or neuron-level analysis for fine-grained inspection"],
+      "limitations": [ "Like integrated gradients, sensitive to the choice of baseline/reference input" , 
+      "Like integrated gradients, it is computationally more expensive than raw gradient-based tools"
+     ],
       "research_applications": [
+         {
+          "used_in": "Axiomatic Attribution for Deep Networks",
+          "type": "paper",
+          "year": 2017,
+          "source": "ICML",
+          "url": "https://dl.acm.org/doi/10.5555/3305890.3306024",
+          "note": "Introduces the Integrated Gradients tool on which Layer Integrated Gradients builds."
+        }, 
         {
           "used_in": "Captum Documentation (GitHub)",
           "type": "docs",
@@ -171,34 +97,43 @@
           "source": "Facebook AI Research",
           "url": "https://captum.ai/api/layer_integrated_gradients.html",
           "note": "Documents the layer-wise IG method in Captum."
+        }, 
+        {
+          "used_in": "Captum Tutorial",
+          "type": "docs",
+          "year": 2023,
+          "source": "Facebook AI Research",
+          "url": "https://captum.ai/tutorials/Llama2_LLM_Attribution",
+          "note": "Tutorial where layer integrated gradients is leveraged to explain Llama2."
         }
       ],
-      "typical_cost": "missing"
+      "typical_cost": "medium", 
+      "implementation": "https://github.com/meta-pytorch/captum"
     },
     {
       "name": "Saliency",
       "plugin_id": "captum_saliency_classifier",
       "task_input": ["classification"],
-      "access_arch": {"access": ["white_box"], "arch": ["transformer_general", "encoder", "NA"]},
+      "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
       "accessibility":"non experts",
       "description": {
-        "overview": "Saliency computes the gradient of the output score with respect to each input embedding, producing a token-level importance heatmap. It highlights tokens whose small changes most affect the output.",
+        "overview": "Saliency computes the gradient of the output with respect to each input embedding, producing a token-level attribution scores.",
         "main_functionalities": [
-          "Compute token importance as the magnitude of input gradients",
-          "Fast single-pass computation (one forward and backward)",
-          "No baseline required"
+          "Compute token importance as the magnitude of gradients of the output with respect to the input"
         ]
       },
       "strengths": [
-        "Very fast (single backward pass)",
+        "Very fast",
         "Easy to interpret as 'which tokens influence the output most'",
+        "Admits an intuitive interpretation as the first-order Taylor approximation of the model around the input. The gradients represent the coefficients of this local linear approximation, and their magnitude is used as a measure of how sensitive the prediction is to each input token.", 
         "Useful for quick debugging and visualization"
       ],
       "limitations": [
-        "Often noisy or unstable, highlighting spurious tokens",
-        "Suffers from gradient saturation (zero gradients) and discontinuities",
-        "Sensitivity scores do not guarantee causal importance"
+        "Often noisy or unstable, prone to highlight spurious importances",
+        "Suffers from gradient saturation, which means that gradients approach zero and can be misleading in a neighbourhood of the inputs",
+        "Does not satisfy desirable axioms like sensitivity and implementation invariance"
+
       ],
       "research_applications": [
         {
@@ -218,39 +153,48 @@
           "note": "Describes Saliency in Captum."
         }, 
         {
+          "used_in": "Using Captum to Explain Generative Language Models",
+          "type": "paper",
+          "year": 2023,
+          "source": "Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software (NLP-OSS 2023)",
+          "url": "https://aclanthology.org/2023.nlposs-1.19.pdf",
+          "note": "Introduces attribution tools like Saliency in the popular Captum toolkit."
+        },
+        {
           "used_in": "Interpreto: An Explainability Library for Transformers",
           "type": "paper",
           "year": 2023,
           "source": "ArXiv",
           "url": "https://arxiv.org/html/2512.09730v1", 
-          "note": "Introduces the Interpreto toolkits which also implements Saliency."
+          "note": "Introduces the Interpreto toolkit which also implements Saliency."
         }
       ],
+      "implementation": "https://github.com/meta-pytorch/captum", 
       "typical_cost": "low"
     },
     {
       "name": "Saliency",
       "task_input": ["generation"],
-      "access_arch": {"access": ["white_box"], "arch": ["transformer_general", "encoder", "NA"]},
+       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
       "accessibility":"non experts",
       "description": {
-        "overview": "Saliency computes the gradient of the output score with respect to each input embedding, producing a token-level importance heatmap. It highlights tokens whose small changes most affect the output.",
+        "overview": "Saliency computes the gradient of the output with respect to each input embedding, producing a token-level attribution scores.",
         "main_functionalities": [
-          "Compute token importance as the magnitude of input gradients",
-          "Fast single-pass computation (one forward and backward)",
-          "No baseline required"
+          "Compute token importance as the magnitude of gradients of the output with respect to the input"
         ]
       },
       "strengths": [
-        "Very fast (single backward pass)",
+        "Very fast",
         "Easy to interpret as 'which tokens influence the output most'",
+        "Admits an intuitive interpretation in terms of the first-order Taylor approximation of the model around the input. The gradients represent the coefficients of this local linear approximation, and their magnitude is used as a measure of how sensitive the prediction is to each input token.", 
         "Useful for quick debugging and visualization"
       ],
       "limitations": [
-        "Often noisy or unstable, highlighting spurious tokens",
-        "Suffers from gradient saturation (zero gradients) and discontinuities",
-        "Sensitivity scores do not guarantee causal importance"
+        "Often noisy or unstable, prone to highlight spurious importances",
+        "Suffers from gradient saturation, which means that gradients approach zero and can be misleading in a neighbourhood of the inputs",
+        "Does not satisfy desirable axioms like sensitivity and implementation invariance"
+
       ],
       "research_applications": [
         {
@@ -270,6 +214,14 @@
           "note": "Describes Saliency in Captum."
         }, 
         {
+          "used_in": "Using Captum to Explain Generative Language Models",
+          "type": "paper",
+          "year": 2023,
+          "source": "Proceedings of the 3rd Workshop for Natural Language Processing Open Source Software (NLP-OSS 2023)",
+          "url": "https://aclanthology.org/2023.nlposs-1.19.pdf",
+          "note": "Introduces attribution tools like Saliency in the popular Captum toolkit."
+        },
+        {
           "used_in": "Interpreto: An Explainability Library for Transformers",
           "type": "paper",
           "year": 2023,
@@ -278,6 +230,7 @@
           "note": "Introduces the Interpreto toolkits which also implements Saliency."
         }
       ],
+      "implementation": "https://github.com/meta-pytorch/captum", 
       "typical_cost": "low"
     },
     {
@@ -288,13 +241,16 @@
       "target_scope": "local",
       "accessibility":"non experts",
       "description": {
-        "overview": "Input\u00d7Gradient multiplies each input embedding by its gradient, yielding signed attributions. It highlights features with large values and gradients.",
+        "overview": "Input\u00d7Gradient multiplies each input embedding by its gradient, yielding token-level attribution scores.",
         "main_functionalities": [
           "Compute contributions by combining input values with gradients"
         ]
       },
-      "strengths": [],
-      "limitations": [],
+      "strengths": ["Very fast (single-pass computation)", "Capture both current token values and sensitivity of the output to those tokens",
+       "Very intuitive to interpret: it captures contribution rather than only sensitivity."],
+      "limitations": [   "Often noisy or unstable, prone to highlight spurious importances",
+        "Suffers from gradient saturation, which means that gradients approach zero and can be misleading in a neighbourhood of the inputs",
+        "Does not satisfy desirable axioms like sensitivity and implementation invariance"],
       "research_applications": [
         {
           "used_in": "Captum Documentation (GitHub)",
@@ -313,22 +269,26 @@
           "note": "Introduces the Interpreto toolkits which also implements Input\u00d7Gradient."
         }
       ],
-      "typical_cost": "low"
+      "typical_cost": "low", 
+      "implementation": "https://github.com/meta-pytorch/captum"
     },
     {
-      "name": "Input\u00d7Gradient",
+      "name": "Input\u00d7Gradient", 
       "task_input": ["generation"],
-      "access_arch": {"access": ["white_box"], "arch": ["all"]},
+       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
       "accessibility":"non experts",
       "description": {
-        "overview": "Input\u00d7Gradient multiplies each input embedding by its gradient, yielding signed attributions. It highlights features with large values and gradients.",
+        "overview": "Input\u00d7Gradient multiplies each input embedding by its gradient, yielding token-level attribution scores.",
         "main_functionalities": [
           "Compute contributions by combining input values with gradients"
         ]
       },
-      "strengths": [],
-      "limitations": [],
+      "strengths": ["Very fast (single-pass computation)", "Capture both current token values and sensitivity of the output to those tokens",
+       "Very intuitive to interpret: it captures contribution rather than only sensitivity."],
+      "limitations": [   "Often noisy or unstable, prone to highlight spurious importances",
+        "Suffers from gradient saturation, which means that gradients approach zero and can be misleading in a neighbourhood of the inputs",
+        "Does not satisfy desirable axioms like sensitivity and implementation invariance"],
       "research_applications": [
         {
           "used_in": "Captum Documentation (GitHub)",
@@ -347,30 +307,28 @@
           "note": "Introduces the Interpreto toolkits which also implements Input\u00d7Gradient."
         }
       ],
-      "typical_cost": "low"
+      "typical_cost": "low", 
+      "implementation": "https://github.com/meta-pytorch/captum"
     },
     {
-      "name": "DeepLIFT (Captum)",
+      "name": "DeepLIFT",
       "plugin_id": "captum_deeplift_classifier",
       "task_input": ["classification"],
-      "access_arch": {"access": ["white_box"], "arch": ["transformer_general", "encoder", "NA"]},
+      "access_arch": {"access": ["white_box"], "arch": ["encdec", "encoder", "decoder"]},
       "target_scope": "local",
       "description": {
-        "overview": "DeepLIFT attributes a change in the output to changes in input relative to a baseline. It backpropagates differences in activation to compute contributions of each input.",
+        "overview": "DeepLIFT attributes the change in a model’s output to differences in input features relative to a chosen baseline. Instead of propagating gradients, it backpropagates activation differences through the network using specific propagation rules to assign contribution scores to each input.",
         "main_functionalities": [
-          "Compute baseline-based token attributions",
-          "Handle gradient saturation by non-linear backpropagation rules"
+          "Compute token attributions relative to a reference baseline"
         ]
       },
       "strengths": [
-        "Often faster than high-step IG (fewer passes)",
-        "Handles cases of zero gradients (saturation) better than raw gradients",
-        "Produces sharper attributions than Saliency"
+        "Often faster than Integrated Gradients",
+        "Handles cases of zero gradients (saturation) more robustly than raw-gradient tools", 
+        "It satisfies additivity, a desirable property similar to completeness for Integrated Gradients"
       ],
       "limitations": [
-        "Baseline choice still affects results (like IG)",
-        "Resulting attribution depends on network structure and non-linearities",
-        "Correlational attribution (not inherently causal)"
+        "Baseline choice can affect attributions (like for Integrated Gradients)"
       ],
       "research_applications": [
         {
@@ -390,49 +348,8 @@
           "note": "Describes DeepLIFT in Captum."
         }
       ],
-      "typical_cost": "medium"
-    },
-    {
-      "name": "DeepLIFT (Captum)",
-      "task_input": ["generation"],
-      "access_arch": {"access": ["white_box"], "arch": ["transformer_general", "encoder", "NA"]},
-      "target_scope": "local",
-      "description": {
-        "overview": "DeepLIFT attributes a change in the output to changes in input relative to a baseline. It backpropagates differences in activation to compute contributions of each input.",
-        "main_functionalities": [
-          "Compute baseline-based token attributions",
-          "Handle gradient saturation by non-linear backpropagation rules"
-        ]
-      },
-      "strengths": [
-        "Often faster than high-step IG (fewer passes)",
-        "Handles cases of zero gradients (saturation) better than raw gradients",
-        "Produces sharper attributions than Saliency"
-      ],
-      "limitations": [
-        "Baseline choice still affects results (like IG)",
-        "Resulting attribution depends on network structure and non-linearities",
-        "Correlational attribution (not inherently causal)"
-      ],
-      "research_applications": [
-        {
-          "used_in": "Learning Important Features Through Propagating Activation Differences",
-          "type": "paper",
-          "year": 2017,
-          "source": "ICML",
-          "url": "https://proceedings.mlr.press/v70/shrikumar17a.html",
-          "note": "Introduces DeepLIFT method."
-        },
-        {
-          "used_in": "Captum Documentation (GitHub)",
-          "type": "docs",
-          "year": 2023,
-          "source": "Facebook AI Research",
-          "url": "https://captum.ai/api/deeplift.html",
-          "note": "Describes DeepLIFT in Captum."
-        }
-      ],
-      "typical_cost": "medium"
+      "typical_cost": "medium", 
+      "implementation": "https://github.com/kundajelab/deeplift"
     },
     {
       "name": "GradientSHAP",
@@ -1641,7 +1558,7 @@
       "typical_cost": "medium"
     }, 
     {
-  "name": "Integrated Gradients - Decoder Only (Inseq)",
+  "name": "Integrated Gradients (IG)",
   "plugin_id": "inseq_decoder_ig",
   "task_input": ["generation"],
   "access_arch": {
@@ -1692,7 +1609,7 @@
   "typical_cost": "medium-high"
 },
 {
-  "name": "Integrated Gradients - EncoderDecoder (Inseq)",
+  "name": "Integrated Gradients (IG)",
   "plugin_id": "inseq_encdec_ig",
   "task_input": ["generation"],
   "access_arch": {
@@ -1743,7 +1660,7 @@
   "typical_cost": "high"
 },
 {
-  "name": "Discretized Integrated Gradients - Decoder (Inseq)",
+  "name": "Discretized Integrated Gradients",
   "plugin_id": "inseq_decoder_discretized_ig",
   "task_input": ["generation"],
   "access_arch": {
@@ -1774,7 +1691,7 @@
   "typical_cost": "medium-high"
 },
 {
-  "name": "Discretized Integrated Gradients - EncoderDecoder (Inseq)",
+  "name": "Discretized Integrated Gradients",
   "plugin_id": "inseq_encdec_discretized_ig",
   "task_input": ["generation"],
   "access_arch": {
@@ -1860,7 +1777,7 @@
     ] 
     }, 
 {
-  "name": "GradientSHAP - Decoder (Inseq)",
+  "name": "GradientSHAP",
   "plugin_id": "inseq_decoder_gradient_shap",
   "task_input": ["generation"],
   "access_arch": {
@@ -1890,7 +1807,7 @@
   "typical_cost": "high"
 },
 {
-  "name": "DeepLIFT - Decoder (Inseq)",
+  "name": "DeepLIFT",
   "plugin_id": "inseq_decoder_deeplift",
   "task_input": ["generation"],
   "access_arch": {
@@ -1919,7 +1836,7 @@
   "typical_cost": "medium"
 },
 {
-  "name": "Input × Gradient - Decoder (Inseq)",
+  "name": "Input × Gradient",
   "plugin_id": "inseq_decoder_input_x_gradient",
   "task_input": ["generation"],
   "access_arch": {
@@ -1948,7 +1865,7 @@
   "typical_cost": "low"
 }, 
 {
-  "name": "LIME - Decoder (Inseq)",
+  "name": "LIME",
   "plugin_id": "inseq_decoder_lime",
   "task_input": ["generation"],
   "access_arch": {
@@ -1996,7 +1913,7 @@
   "typical_cost": "high"
 }, 
 {
-  "name": "GradientSHAP - EncoderDecoder (Inseq)",
+  "name": "GradientSHAP",
   "plugin_id": "inseq_encdec_gradient_shap",
   "task_input": ["generation"],
   "access_arch": {
@@ -2026,7 +1943,7 @@
   "typical_cost": "high"
 },
 {
-  "name": "DeepLIFT - EncoderDecoder (Inseq)",
+  "name": "DeepLIFT",
   "plugin_id": "inseq_encdec_deeplift",
   "task_input": ["generation"],
   "access_arch": {
@@ -2055,7 +1972,7 @@
   "typical_cost": "medium"
 },
 {
-  "name": "Input × Gradient - EncoderDecoder (Inseq)",
+  "name": "Input × Gradient",
   "plugin_id": "inseq_encdec_input_x_gradient",
   "task_input": ["generation"],
   "access_arch": {
@@ -2084,7 +2001,7 @@
   "typical_cost": "low"
 }, 
 {
-  "name": "LIME - EncoderDecoder (Inseq)",
+  "name": "LIME",
   "plugin_id": "inseq_encdec_lime",
   "task_input": ["generation"],
   "access_arch": {

@@ -49,7 +49,13 @@ from toolkits.linear_cka import LinearCKALayers
 
 from toolkits.cca_layers import CCALayers
 
+import html
+import re
+import streamlit.components.v1 as components
+import html as _html
 
+
+_NODE_RE = re.compile(r"^(X0|A|M|I)(\d+)?_(\d+)$")  # X0_3 OR A6_3 etc.
 
 
 def _parse_node(node_id: str):
@@ -855,6 +861,7 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
     strengths = selected_item.get("strengths", []) or []
     limitations = selected_item.get("limitations", []) or []
     apps = selected_item.get("research_applications", []) or []
+    impl = selected_item.get("implementation")
 
     with st.container(border=True):
         st.markdown(
@@ -924,7 +931,18 @@ def render_selected_tool_card(selected_item: Dict[str, Any]):
                     for x in limitations:
                         st.write(f"- {x}")
                 else:
-                    st.caption("—")
+                        st.caption("—")
+
+        
+        if impl:
+            st.markdown("<div style='height:0.35rem'></div>", unsafe_allow_html=True)
+            if isinstance(impl, str):
+                st.markdown(f"🔗 **Implementation available at:** [{impl}]({impl})")
+            elif isinstance(impl, (list, tuple)):
+                st.markdown("🔗 **Implementation available at:**")
+                for u in impl:
+                    if u:
+                        st.markdown(f"- [{u}]({u})")
 
         if apps:
             with st.expander("📚 Further Reading", expanded=False):
