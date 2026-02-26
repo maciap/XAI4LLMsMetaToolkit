@@ -250,6 +250,7 @@ def render_compare_view(anchor_item: Dict[str, Any], other_items: List[Dict[str,
             "scope": meta.get("scope", "NA"),
             "access": meta.get("access", "NA"),
             "arch": meta.get("arch", "NA"),
+            "task": meta.get("task", "NA"),
             "granularity": meta.get("granularity", "NA"),
             "format": meta.get("format", "NA"),
             "fidelity": meta.get("fidelity", "NA"),
@@ -294,6 +295,7 @@ def render_compare_view(anchor_item: Dict[str, Any], other_items: List[Dict[str,
 # -------------------------
 # Streamlit UI
 # -------------------------
+
 st.set_page_config(page_title="LLM Explainability Navigator 🧭", layout="wide")
 
 # ---- Session state (important fixes) ----
@@ -417,7 +419,7 @@ st.markdown(
     font-weight: 700;
     margin-bottom: 0.3rem;
 ">
-    LLM Explainability Navigator 🧭
+    Virgil: Your LLM Explainability Navigator 🧭
 </h1>
 <p style="
     font-size: 1.1rem;
