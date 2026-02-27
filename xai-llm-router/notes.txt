@@ -1,0 +1,32 @@
+- We have a DAG on the genes 
+- We have 0/1 matrices 
+- What if we instead of predicting, we try to look at what the data tell us: 
+
+1) Exploratory question: we are given the 0/1 let us find dense subset for that (finding a collection of dense submatrices). 
+We currently have the data with the ancestors annotated.  We can have the data without annotation and study dense subsets of those. How spread around are the genes? What is the average lowest common ancestors? 
+
+
+2) We have the 0/1 matrices and then we have the HPO and the DAG. We can also abstract away the details and move to a similarity matrix by using the DAG. 
+We can have square matrices for each ontology. You can use it to diffuse the similarities. 
+
+3) Clustering of the 0-1 matrix: how much has been done? Are there clear clusters or not?
+ 
+
+Elena: Consesus clustering - we concentrate on a subset of HPO but if we look at the HPO annotations in the propagated matrix. We can identidy a very large set of HPO. We took just this matrix subset.  
+
+Try to interpret the clusters in multiple views. See the average HPO distance that mark distance. 
+
+Heikki's summary:
+
+1) Finding dense subsets of the HPOxGO dataset. 
+ 
+2) Find similarity matrices for HPOs, and for GOs, using the DAG information. Use those to do some diffusion on the 0-1 data.
+
+
+TO DO for me: 
+- Use Resnik also for HPO - but not with the propagated matrix - it is done to account for the hierarchy 
+- Find dense submatrices 
+
+
+
+ 

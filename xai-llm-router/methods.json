@@ -16,14 +16,14 @@
         ]
       },
       "strengths": [
-        "Satisfies axioms of sensitivity and implementation invariance【60†L23-L32】",
+        "Satisfies axioms of sensitivity and implementation invariance",
         "More stable and less noisy than raw gradients",
         "Provides intuitive baseline comparison ('change from reference to input')"
       ],
       "limitations": [
-        "Requires choosing a baseline, which affects results【60†L23-L32】",
+        "Requires choosing a baseline, which affects results",
         "Computationally expensive due to multiple forward/backward passes",
-        "Correlational attribution (not strictly causal without interventions)"
+        "Can provide noisy explanations"
       ],
       "research_applications": [
         {
@@ -688,21 +688,22 @@
       "target_scope": "local",
       "accessibility":"non experts",
       "description": {
-        "overview": "Based on variance decomposition, Sobol indices measure both individual (first-order) and interaction (higher-order) effects of features on model outputs.",
+        "overview": "Based on the theoretical framework of sensitivity analysis via Sobol indices, Sobol indices measure both individual (first-order) and interaction (higher-order) effects of features on model outputs.",
         "main_functionalities": [
           "Compute local attributions"
         ]
       },
-      "strengths": [],
-      "limitations": [],
+      "strengths": ["Theoretically grounded in sensitivity analysis", 
+    "Accounts for interaction effects beyond univariate attributions"],
+      "limitations": ["Not tailored to natural language"],
       "research_applications": [
         {
-          "used_in": "missing",
+          "used_in":  "Look at the Variance! Efficient Black-box Explanations with Sobol-based Sensitivity Analysis", 
           "type": "paper",
           "year": 2017,
           "source": "NeurIPS",
-          "url": "https://proceedings.neurips.cc/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf",
-          "note": "Introduces SHAP (Lundberg & Lee, 2017)."
+          "url": "https://arxiv.org/pdf/2111.04138",
+          "note": "Introduces the Sobol tool."
         }, 
         {
           "used_in": "Interpreto: An Explainability Library for Transformers",
@@ -722,21 +723,33 @@
       "target_scope": "local",
       "accessibility":"non experts",
       "description": {
-        "overview": "SmoothGrad generates multiple noisy versions of an input, computes gradients for each, and averages the results to obtain more stable and visually coherent attributions.",
+        "overview": "Instead of using raw gradients to compute attributions, which can be unstable, SmoothGrad approximates a smoothing of the raw gradients based on a Gaussian kernel.",
         "main_functionalities": [
           "Compute local attributions"
         ]
       },
-      "strengths": [],
-      "limitations": [],
+      "strengths": ["More stable than attribution tools based on raw gradients", 
+      "Reduces visual artifacts and sharp discontinuities in attributions, leading to explanations that are easier to interpret", 
+       "It can be viewed as a general procedure which computes an attribution map by averaging over multiple attribution maps of an arbitrary gradient-based attribution method with multiple noised input"],
+      "limitations": ["More computationally demanding than attribution tools based on raw gradients, requiring multiple forward passes", 
+    "Obtaining proper results requires carefully selecting the variance of the Gaussian noise", 
+    "Not tailored to natural language"],
       "research_applications": [
         {
-          "used_in": "missing",
+          "used_in": "SmoothGrad: removing noise by adding noise",
           "type": "paper",
           "year": 2017,
-          "source": "NeurIPS",
-          "url": "https://proceedings.neurips.cc/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf",
-          "note": "Introduces SHAP (Lundberg & Lee, 2017)."
+          "source": "",
+          "url": "https://arxiv.org/pdf/1706.03825",
+          "note": "Introduces the SmoothGrad tool."
+        }, 
+        {
+          "used_in": "Understanding Integrated Gradients with SmoothTaylor for Deep Neural Network Attribution",
+          "type": "paper",
+          "year": 2021,
+          "source": "",
+          "url": "https://arxiv.org/pdf/2004.10484",
+          "note": "Introduces the TaylorGrad tool, a particular instance of SmoothGrad that bridges the gap between SmoothGrad and Integrated Gradients."
         }, 
         {
           "used_in": "Interpreto: An Explainability Library for Transformers",
@@ -874,7 +887,7 @@
           "year": 2019,
           "source": "ArXiv",
           "url": "http://arxiv.org/abs/1909.09223",
-          "note": "Introduces the  InterpretML toolkit which implements the LIME method."
+          "note": "Introduces the  InterpretML toolkit which implements the Morris Sensitivity analysis method."
         }
       ],
       "typical_cost": "high"
@@ -1165,61 +1178,6 @@
       "typical_cost": "high"
     },
     {
-      "name": "DALEX BreakDown",
-      "task_input": ["classification"],
-      "access_arch": {"access": ["black_box"], "arch": ["all"]},
-      "target_scope": "local",
-      "description": {
-        "overview": "BreakDown (in DALEX) decomposes a model’s prediction for a single instance into additive contributions of each feature along an ordered path.",
-        "main_functionalities": [
-          "Compute per-feature contributions for one prediction",
-          "Enable interactive investigation of contribution order"
-        ]
-      },
-      "strengths": [
-        "Gives clear additive feature contributions",
-        "Local explanation with simple interpretation"
-      ],
-      "limitations": [
-        "Depends on feature ordering (non-unique explanations)",
-        "May not capture feature interactions"
-      ],
-      "research_applications": [],
-      "typical_cost": "medium"
-    },
-    {
-      "name": "DALEX Shap (random-path Shapley values)",
-      "task_input": ["classification"],
-      "access_arch": {"access": ["black_box"], "arch": ["all"]},
-      "target_scope": "local",
-      "description": {
-        "overview": "DALEX Shap approximates Shapley values by averaging feature contributions across random permutations (paths). It provides local Shapley-based explanations.",
-        "main_functionalities": [
-          "Compute Shapley-style attributions via random feature orderings",
-          "Provides local explanations that sum to output change"
-        ]
-      },
-      "strengths": [
-        "Grounded in cooperative game theory (Shapley values)",
-        "Local feature attributions summing to the prediction"
-      ],
-      "limitations": [
-        "Computationally expensive with many features",
-        "Sampling variance in attributions"
-      ],
-      "research_applications": [
-        {
-          "used_in": "A Unified Approach to Interpreting Model Predictions",
-          "type": "paper",
-          "year": 2017,
-          "source": "NeurIPS",
-          "url": "https://proceedings.neurips.cc/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf",
-          "note": "Introduces SHAP framework (Lundberg & Lee, 2017)."
-        }
-      ],
-      "typical_cost": "high"
-    },
-    {
       "name": "FAT Forensics CounterfactualExplainer",
       "task_input": ["classification"],
       "access_arch": {"access": ["black_box"], "arch": ["all"]},
@@ -1273,7 +1231,7 @@
       "typical_cost": "high"
     },
     {
-      "name": "Activation Patching (TransformerLens)",
+      "name": "Activation Patching",
       "task_input": ["generation"],
       "access_arch": {"access": ["white_box"], "arch": ["decoder"]},
       "target_scope": "local",
@@ -1383,19 +1341,21 @@
       "typical_cost": "medium"
     },
     {
-      "name": "Vocabulary-space FFN update decomposition",
+      "name": "MLP update decomposition",
       "task_input": ["generation"],
       "access_arch": {"access": ["white_box"], "arch": ["decoder"]},
       "target_scope": "local",
       "description": {
-        "overview": "This method decomposes a Transformer's feed-forward (MLP) output as updates in vocabulary token space. Each part corresponds to parameter vectors promoting specific word concepts.",
+        "overview": "This method decomposes a Transformer MLP (feed-forward) layer as updates that pertain to single paramter vectors. Each vector is then interpreted as promoting specific  concepts.",
         "main_functionalities": [
-          "Project FFN output changes into vocabulary logit space",
-          "Decompose the update into components tied to learned concepts"
+          "Project MLP output changes into vocabulary logit space",
+          "Decompose the MLP update into components which can be interpreted", 
+          "Allows steering generation towards a direction of interest"
         ]
-      },
-      "strengths": [],
-      "limitations": [],
+      }, 
+      "strengths": ["Valuable to gain fine-grained insight on the mechanisms implemented in the MLP, which is a core yet poorly-understood component of the transformer.", 
+    "Vectors in the decomposition of the MLP update are often interpretable."],
+      "limitations": ["Possible non-linear interactions between MLP weight vectors that may generate new meanings are ignored."],
       "research_applications": [
         {
           "used_in": "Transformer FFN layers build predictions by promoting vocabulary-space concepts",
@@ -1670,23 +1630,29 @@
   "accessibility":"non experts",
   "target_scope": "local",
   "description": {
-    "overview": "Discretized Integrated Gradients approximates the IG path integral in embedding space for decoder-only language models. It attributes generated tokens to input tokens by accumulating gradients across interpolation steps.",
+    "overview": "Discretized Integrated Gradients extends Integrated Gradients to account for the discrete nature of language model embeddings.",
     "main_functionalities": [
-      "Token-level attribution for next-token prediction",
-      "Configurable number of integration steps",
-      "Baseline selection support",
-      "Interactive visualization of attribution heatmaps"
+      "Token-level attribution"
     ]
   },
   "strengths": [
-    "More stable than raw gradients",
-    "Satisfies sensitivity and implementation invariance",
-    "Prediction-specific explanations"
+    "Like IG, more stable than raw gradients",
+    "Satisfies three desirable axioms: completeness, sensitivity and implementation invariance",
+    "Tailored to natural language"
   ],
   "limitations": [
     "Baseline choice influences results",
-    "Computational cost scales with integration steps",
-    "Gradient access required"
+    "Computational cost scales with integration steps"
+  ],
+   "research_applications": [
+    {
+      "used_in": "Discretized Integrated Gradients for Explaining Language Models",
+      "type": "paper",
+      "year": 2021,
+      "source": "Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing",
+      "url": "https://aclanthology.org/2021.emnlp-main.805.pdf",
+      "note": "Introduces Integrated Gradients."
+    }
   ],
   "typical_cost": "medium-high"
 },
@@ -1701,23 +1667,29 @@
   "accessibility":"non experts",
   "target_scope": "local",
   "description": {
-    "overview": "Discretized Integrated Gradients approximates the IG path integral in embedding space for encoder-decoder language models. It attributes generated tokens to input tokens by accumulating gradients across interpolation steps.",
+    "overview": "Discretized Integrated Gradients extends Integrated Gradients to account for the discrete nature of language model embeddings.",
     "main_functionalities": [
-      "Token-level attribution for next-token prediction",
-      "Configurable number of integration steps",
-      "Baseline selection support",
-      "Interactive visualization of attribution heatmaps"
-    ]
+      "Token-level attribution"
+        ]
   },
-  "strengths": [
-    "More stable than raw gradients",
-    "Satisfies sensitivity and implementation invariance",
-    "Prediction-specific explanations"
+ "strengths": [
+    "Like IG, more stable than raw gradients",
+    "Satisfies three desirable axioms: completeness, sensitivity and implementation invariance",
+    "Tailored to natural language"
   ],
   "limitations": [
     "Baseline choice influences results",
-    "Computational cost scales with integration steps",
-    "Gradient access required"
+    "Computational cost scales with integration steps"
+  ],
+  "research_applications": [
+    {
+      "used_in": "Discretized Integrated Gradients for Explaining Language Models",
+      "type": "paper",
+      "year": 2021,
+      "source": "Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing",
+      "url": "https://aclanthology.org/2021.emnlp-main.805.pdf",
+      "note": "Introduces Integrated Gradients."
+    }
   ],
   "typical_cost": "medium-high"
 },

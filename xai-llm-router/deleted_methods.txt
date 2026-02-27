@@ -1,0 +1,55 @@
+ {
+      "name": "DALEX BreakDown",
+      "task_input": ["classification"],
+      "access_arch": {"access": ["black_box"], "arch": ["all"]},
+      "target_scope": "local",
+      "description": {
+        "overview": "BreakDown (in DALEX) decomposes a model’s prediction for a single instance into additive contributions of each feature along an ordered path.",
+        "main_functionalities": [
+          "Compute per-feature contributions for one prediction",
+          "Enable interactive investigation of contribution order"
+        ]
+      },
+      "strengths": [
+        "Gives clear additive feature contributions",
+        "Local explanation with simple interpretation"
+      ],
+      "limitations": [
+        "Depends on feature ordering (non-unique explanations)",
+        "May not capture feature interactions"
+      ],
+      "research_applications": [],
+      "typical_cost": "medium"
+    },
+    {
+      "name": "DALEX Shap (random-path Shapley values)",
+      "task_input": ["classification"],
+      "access_arch": {"access": ["black_box"], "arch": ["all"]},
+      "target_scope": "local",
+      "description": {
+        "overview": "DALEX Shap approximates Shapley values by averaging feature contributions across random permutations (paths). It provides local Shapley-based explanations.",
+        "main_functionalities": [
+          "Compute Shapley-style attributions via random feature orderings",
+          "Provides local explanations that sum to output change"
+        ]
+      },
+      "strengths": [
+        "Grounded in cooperative game theory (Shapley values)",
+        "Local feature attributions summing to the prediction"
+      ],
+      "limitations": [
+        "Computationally expensive with many features",
+        "Sampling variance in attributions"
+      ],
+      "research_applications": [
+        {
+          "used_in": "A Unified Approach to Interpreting Model Predictions",
+          "type": "paper",
+          "year": 2017,
+          "source": "NeurIPS",
+          "url": "https://proceedings.neurips.cc/paper/2017/file/8a20a8621978632d76c43dfd28b67767-Paper.pdf",
+          "note": "Introduces SHAP framework (Lundberg & Lee, 2017)."
+        }
+      ],
+      "typical_cost": "high"
+    },
