@@ -909,6 +909,14 @@ def _pretty_task_label(item: Dict[str, Any]) -> str:
     tasks = norm_list(tasks)
     tasks_l = [str(t).strip().lower() for t in tasks if t and t != "NA"]
 
+    has_class = any("class" in t for t in tasks_l)
+    has_gen = any(("generation" in t) or ("text_generation" in t) or (t == "gen") for t in tasks_l)
+
+
+    # If both are present, don't show a label
+    if has_class and has_gen:
+        return ""
+
     if any("class" in t for t in tasks_l):
         return "Classification"
     if any(("generation" in t) or ("text_generation" in t) or (t == "gen") for t in tasks_l):

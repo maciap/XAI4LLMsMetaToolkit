@@ -55,6 +55,8 @@ from toolkits.linear_cka import LinearCKALayers
 from toolkits.cca_layers import CCALayers  
 import html as _html
 
+from toolkits.probing import ProbingBinaryExamples
+
 from Navigator_utils import (
     _parse_node,
     render_meta_graph_svg,
@@ -141,6 +143,8 @@ def get_plugins():
     plugin32 = CaptumNoiseTunnelInputXGradClassifierAttribution()
 
 
+    plugin33 = ProbingBinaryExamples()
+
     return {
         plugin1.id: plugin1,
         plugin2.id: plugin2,
@@ -178,6 +182,8 @@ def get_plugins():
         plugin30.id: plugin30,
         plugin31.id: plugin31,
         plugin32.id: plugin32,
+
+        plugin33.id: plugin33
 
     }
 
@@ -629,7 +635,7 @@ with col_recs:
             alabel = _pretty_arch_label(item)
 
             # Show Task + Arch ONLY for allowed values
-            if tlabel:
+            if tlabel and tlabel.strip():
                 st.caption(f"🎯 Task: {tlabel}")
             if alabel:
                 st.caption(f"🏗️ Architecture: {alabel}")
@@ -1429,6 +1435,71 @@ with col_run:
 
                     with st.expander("Top source tokens", expanded=False):
                         st.dataframe(pd.DataFrame(outputs.get("top_sources", [])), use_container_width=True)
+
+                    render_downloads(outputs, selected_item=selected_item)
+
+
+                elif outputs and outputs.get("plugin") == "probing_binary_examples":
+                    st.subheader("Result")
+                    with st.expander("ℹ️ How to read Probing results", expanded=True):
+                        st.write(
+                            "- A **probe** is a simple linear classifier trained on hidden representations from a specific model layer.\n"
+                            "- If performance is high, it suggests that the probed layer encodes information that linearly separates the two classes.\n"
+                            "- We extract hidden states from the selected layer, pool them into a single vector per example, "
+                            "and train a linear classifier (e.g., logistic regression).\n"
+                            "- Results are reported using **Stratified Cross-Validation**, so each fold trains and tests on different splits.\n\n"
+                            "**Metrics explained:**\n"
+                            "- **Accuracy**: overall proportion of correct predictions.\n"
+                            "- **Balanced Accuracy**: accounts for class imbalance (recommended metric).\n"
+                            "- **Macro F1**: harmonic mean of precision and recall, averaged across classes.\n"
+                            "- The **confusion matrix** shows how many positives/negatives were correctly or incorrectly predicted.\n\n"
+                            "⚠️ **Important:** This demo uses a small number of examples (e.g., 30 vs 30 by default). "
+                            "While useful for experimentation, robust scientific conclusions require substantially larger datasets.\n"
+                            "Small datasets may lead to unstable or over-optimistic estimates."
+                        )
+
+
+                    st.write(f"**Model:** {outputs.get('model','NA')}")
+                    st.write(f"**Device:** {outputs.get('device','NA')}")
+                    st.caption(f"n_pos={outputs.get('n_pos')} · n_neg={outputs.get('n_neg')} · total={outputs.get('total')}")
+
+                    params = outputs.get("params", {}) or {}
+                    with st.expander("Parameters", expanded=False):
+                        st.json(params, expanded=False)
+
+                    metrics = outputs.get("metrics", {}) or {}
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.metric(
+                            "Accuracy (mean ± std)",
+                            f"{metrics.get('accuracy_mean', 0.0):.3f}",
+                            delta=f"± {metrics.get('accuracy_std', 0.0):.3f}",
+                        )
+                    with c2:
+                        st.metric(
+                            "Balanced Acc (mean ± std)",
+                            f"{metrics.get('balanced_accuracy_mean', 0.0):.3f}",
+                            delta=f"± {metrics.get('balanced_accuracy_std', 0.0):.3f}",
+                        )
+                    with c3:
+                        st.metric(
+                            "Macro F1 (mean ± std)",
+                            f"{metrics.get('macro_f1_mean', 0.0):.3f}",
+                            delta=f"± {metrics.get('macro_f1_std', 0.0):.3f}",
+                        )
+
+                    folds = outputs.get("folds", []) or []
+                    if folds:
+                        st.markdown("### Cross-validation folds")
+                        st.dataframe(pd.DataFrame(folds), use_container_width=True)
+
+                    cm = (outputs.get("confusion_matrix") or {})
+                    mat = cm.get("matrix")
+                    labels = cm.get("labels", ["neg(0)", "pos(1)"])
+                    if mat:
+                        st.markdown("### Confusion matrix (aggregated over CV predictions)")
+                        df_cm = pd.DataFrame(mat, index=[f"true {l}" for l in labels], columns=[f"pred {l}" for l in labels])
+                        st.dataframe(df_cm, use_container_width=True)
 
                     render_downloads(outputs, selected_item=selected_item)
                         

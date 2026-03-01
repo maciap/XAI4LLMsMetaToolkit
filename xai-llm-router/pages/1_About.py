@@ -41,7 +41,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("About Virgil LLM Explainability Navigator 🧭")
+st.title("About LLM Explainability Navigator 🧭")
 
 col_left, col_right = st.columns([2, 1], gap="large")
 

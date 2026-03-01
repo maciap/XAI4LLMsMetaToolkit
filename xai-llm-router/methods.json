@@ -1058,6 +1058,41 @@
       "typical_cost": "low"
     },
     {
+      "name": "Probing",
+      "plugin_id": "probing_binary_examples", 
+      "task_input": ["generation", "classification"],
+      "access_arch": {"access": ["white_box"], "arch": ["all"]},
+      "target_scope": "global",
+      "description": {
+        "overview": "Probing assesses what information is encoded in a model’s internal representations by training simple, and often linear, classifiers (or probes) on activations.",
+        "main_functionalities": [
+          "It measures whether specific linguistic or semantic properties can be decoded at a certain location within the transformer",
+          "It allows to test hypotheses on what information the model has stored in different locations"
+        ]
+      },
+      "strengths": [
+        "Probing is fast and easy-to-implement, given a dataset of activations", 
+        "Can uncover interesting directions in the activation space, paving the way for activation steering"
+      ],
+      "limitations": [
+        "Even if some information is decodable at a certain location, it does not mean that it is used for prediction",
+        "The results are affected by the learning capabilities of the probe. The choice of the classifier is not obvious", 
+        "The property to probe for must be predetermined", 
+        "Training the probe requires a labeled dataset"
+      ],
+      "research_applications": [
+        {
+          "used_in": "Probing Classifiers: Promises, Shortcomings, and Advances",
+          "type": "paper",
+          "year": 2022,
+          "source": "Computational Linguistics, Volume 48, Issue 1",
+          "url": "https://aclanthology.org/2022.cl-1.7.pdf",
+          "note": "Critical review of probing, highlighting strengths, limitations and advances."
+        }
+      ],
+      "typical_cost": "medium"
+    },
+    {
       "name": "Layer-wise Relevance Propagation (LRP)",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
