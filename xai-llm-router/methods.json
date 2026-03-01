@@ -1377,7 +1377,7 @@
       "typical_cost": "medium"
     },
     {
-      "name": "BertViz (multi-scale attention)",
+      "name": "BertViz",
       "plugin_id": "bertviz_attention",
       "task_input": ["classification", "generation"],
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
@@ -1404,19 +1404,22 @@
       "typical_cost": "medium"
     },
     {
-      "name": "exBERT (attention + context)",
-      "task_input": ["classification"],
+      "name": "exBERT",
+      "task_input": ["generation"],
       "access_arch": {"access": ["white_box"], "arch": ["all"]},
       "target_scope": "local",
       "description": {
-        "overview": "exBERT is a tool that explores transformer attention weights and contextual word representations. It finds similar contexts in a corpus to help interpret model predictions.",
+        "overview": "exBERT is a tool which provides a concise overview of attention (attention view) and the internal representations (corpus view).",
         "main_functionalities": [
           "Visualize attention weights and token embeddings for a given input",
-          "Retrieve and display similar input contexts from a dataset"
+          "Computes summary statistics summarizing internal representations for a given token", 
+          "The tool can be easily accessed online at https://exbert.vizhub.ai/client/exBERT.html"
         ]
       },
-      "strengths": [],
-      "limitations": [],
+      "strengths": ["Easy to access", 
+    "Useful to quickly test hypotheses on the internal representation of a specific token in a specific context"],
+      "limitations": ["Attention is known not to provide faithful explananations", 
+    "exBERT only provides statistics for a single token, considering a small number of neighbours, yielding no insights on global behaviors"],
       "research_applications": [
         {
           "used_in": "exBERT: A Visual Analysis Tool to Explore Learned Representations",
@@ -1427,7 +1430,8 @@
           "note": "Presents exBERT interactive tool."
         }
       ],
-      "typical_cost": "medium"
+      "typical_cost": "medium", 
+      "implementation": "https://github.com/bhoov/exbert"
     },
     {
       "name": "Sparse Autoencoders (SAELens + Neuronpedia)",
@@ -1694,7 +1698,7 @@
   "typical_cost": "medium-high"
 },
 {
-  "name": "PCA Embedding Visualization",
+  "name": "PCA",
   "plugin_id": "embedding_pca_layers",
   "task_input": ["generation", "classification"],
   "access_arch": {
