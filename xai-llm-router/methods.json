@@ -2057,23 +2057,24 @@
   ]
 }, 
  {
-  "name": "Attention Visualization (Ecco)",
-  "task_input": ["general_NLP", "classification", "generation"],
+  "name": "Non-negative Matrix Factorization (NMF)",
+  "task_input": [ "classification", "generation"],
   "access_arch": { "access": "white_box", "arch": "all" },
-  "accessibility": "mid experts", 
+  "accessibility": "experts", 
   "description": {
-    "overview": "Computes a layer-by-layer linear CKA matrix to visualize representation similarity across transformer layers.",
+    "overview": "Matrix factorization approaches such as non-negative matrix factorization decompose activations into a concise set of patterns.",
     "main_functionalities": [
-      "Extract hidden states for each layer",
-      "Compute linear CKA similarity matrix",
-      "Visualize similarities as a heatmap"
-    ]
+      "Summarizes activation with a small number of factors",
+      "Factors can be intepreted much more easily than individual neurons"
+      ]
   },
   "strengths": [
-    "Intuitive"
+    "Unlike several alternative matrix-factorization approaches, NMF enforces non-negativity, thus avoiding cancellation effects and highlighting semantic clusters", 
+    "Fast algorithms to compute NMF exist"
   ],
   "limitations": [
-    "Attention can lack faithfulness when used for explanation"
+    "Enforcing non-negative can result in information loss", 
+    "Assumes an additive structure for activations which may not hold in practice"
   ],
   "research_applications": [ 
   {
@@ -2083,8 +2084,25 @@
   "source": "Proceedings of the 59th Annual Meeting of the Association for Computational Linguistics and the 11th International Joint Conference on Natural Language Processing: System Demonstrations",
   "url": "https://aclanthology.org/2021.acl-demo.30.pdf",
   "note": "Introduces the Ecco toolkit for analyzing transformer language models. Includes implementation of CKA for comparing layer representations and studying representational similarity across model depth."
+}, 
+  {
+  "used_in": "Algorithms for Non-negative Matrix Factorization",
+  "type": "paper",
+  "year": 2000,
+  "source": "Advances in Neural Information Processing Systems 13: Proceedings of the 2000 Conference",
+  "url": "https://proceedings.neurips.cc/paper_files/paper/2000/file/f9d1152547c0bde01830b7e8bd60024c-Paper.pdf",
+  "note": "Introduces multiplicative update rules to compute NMF"
+}, 
+  {
+  "used_in": "Decomposing MLP Activations into Interpretable Features via Semi-Nonnegative Matrix Factorization",
+  "type": "paper",
+  "year": 2025,
+  "source": "ArXiv",
+  "url": "https://arxiv.org/pdf/2506.10920",
+  "note": "Proposes decomposing MLP activations with Semi-Nonnegative Matrix Factorization for finding interpretable features in the activations. "
 }
-  ]
+  ], 
+  "implementation": "https://github.com/jalammar/ecco"
 },
 {
   "name": "CCA (layer similarity)",
